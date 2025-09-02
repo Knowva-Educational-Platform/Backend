@@ -167,6 +167,7 @@ model Message {
   senderId       Int
   content        String
   timestamp      DateTime     @default(now())
+  readAt         DateTime? 
 }
 
 
