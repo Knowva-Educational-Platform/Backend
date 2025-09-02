@@ -5,7 +5,7 @@ import { PrismaService } from 'src/database/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { Role, User } from 'generated/prisma';
+import { Role, User, Provider } from 'generated/prisma';
 import { LoginDto } from './dto/login.dto';
 const otpGenerator = require('otp-generator')
 import { MailService } from 'src/mail/mail.service';
@@ -251,7 +251,7 @@ export class AuthService {
     return isMatch;
   }
 
-  async generateJwt(payload: any): Promise<string> {
+  async generateJwt(payload: { id: number, role: Role }): Promise<string> {
     let token = await this.jwtService.signAsync(payload, {
       secret: process.env.JWT_SECRET
     });
@@ -262,5 +262,61 @@ export class AuthService {
     const otp = Math.floor(1000 + Math.random() * 9000).toString();
     console.log(otp); // e.g., "5732"
     return otp;
+  }
+
+  async findOrCreateOAuthUser(oauth: {
+    provider: Provider;
+    providerAccountId: string;
+    email: string | null;
+    name?: string | null;
+    accessToken?: string | null;
+    refreshToken?: string | null;
+  }) {
+    // Account already exists
+    const existingAccount = await this.prisma.account.findUnique({
+      where: {
+        provider_providerAccountId: {
+          provider: oauth.provider as Provider, providerAccountId: oauth.providerAccountId
+        }
+      },
+      include: { user: true }
+    });
+
+    if (existingAccount) return existingAccount.user;
+
+    // Check if user already exists with this email but no account
+    if (oauth.email) {
+      const existingUser = await this.prisma.user.findUnique({ where: { email: oauth.email } });
+      if (existingUser) {
+        await this.prisma.account.create({
+          data: {
+            provider: oauth.provider,
+            providerAccountId: oauth.providerAccountId,
+            userId: existingUser.id,
+            accessToken: oauth.accessToken ?? undefined,
+            refreshToken: oauth.refreshToken ?? undefined,
+          }
+        });
+        return existingUser;
+      }
+    }
+
+    // Create new user and connect account
+    return this.prisma.user.create({
+      data: {
+        email: oauth.email!,
+        name: oauth.name!,
+        role: Role.STUDENT,
+        password: '',
+        accounts: {
+          create: {
+            provider: oauth.provider as Provider,
+            providerAccountId: oauth.providerAccountId,
+            accessToken: oauth.accessToken,
+            refreshToken: oauth.refreshToken,
+          }
+        }
+      }
+    });
   }
 }

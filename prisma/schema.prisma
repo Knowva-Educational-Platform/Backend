@@ -25,22 +25,23 @@ model OtpToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-
 model User {
-  id          Int       @id @default(autoincrement())
-  name        String
-  email       String    @unique
-  password    String
-  role        Role
-  subjects    Subject[] @relation("TeacherSubjects")
-  memberships Membership[]
-  messages    Message[]
+  id            Int            @id @default(autoincrement())
+  name          String
+  email         String         @unique
+  password      String
+  role          Role
+  subjects      Subject[]      @relation("TeacherSubjects")
+  memberships   Membership[]
+  messages      Message[]
   notifications Notification[]
-  createdAt   DateTime  @default(now())
+  createdAt     DateTime       @default(now())
 
   StudentAnswer StudentAnswer[]
 
   OtpToken OtpToken[]
+
+  accounts Account[]
 }
 
 enum Role {
@@ -48,33 +49,52 @@ enum Role {
   TEACHER
 }
 
+model Account {
+  id                Int       @id @default(autoincrement())
+  userId            Int
+  provider          Provider
+  providerAccountId String
+  accessToken       String?
+  refreshToken      String?
+  expiresAt         DateTime?
+  user              User      @relation(fields: [userId], references: [id])
+
+  // @@id([provider, userId]) // in case only one account per user
+  @@unique([provider, providerAccountId])
+}
+
+enum Provider {
+  GOOGLE
+  FACEBOOK
+}
+
 model Subject {
-  id       Int       @id @default(autoincrement())
-  title    String
-  description String?
-  teacher  User      @relation("TeacherSubjects", fields: [teacherId], references: [id])
-  teacherId Int
-  groups   Group[]
-  lessons  Lesson[]
-  quizzes  Quiz[]
+  id            Int            @id @default(autoincrement())
+  title         String
+  description   String?
+  teacher       User           @relation("TeacherSubjects", fields: [teacherId], references: [id])
+  teacherId     Int
+  groups        Group[]
+  lessons       Lesson[]
+  quizzes       Quiz[]
   conversations Conversation[]
 }
 
 model Group {
-  id         Int          @id @default(autoincrement())
-  name       String
-  capacity   Int
-  subject    Subject      @relation(fields: [subjectId], references: [id])
-  subjectId  Int
+  id          Int          @id @default(autoincrement())
+  name        String
+  capacity    Int
+  subject     Subject      @relation(fields: [subjectId], references: [id])
+  subjectId   Int
   memberships Membership[]
 }
 
 model Membership {
-  id        Int       @id @default(autoincrement())
-  status    Status    @default(PENDING)
-  student   User      @relation(fields: [studentId], references: [id])
+  id        Int    @id @default(autoincrement())
+  status    Status @default(PENDING)
+  student   User   @relation(fields: [studentId], references: [id])
   studentId Int
-  group     Group     @relation(fields: [groupId], references: [id])
+  group     Group  @relation(fields: [groupId], references: [id])
   groupId   Int
 }
 
@@ -85,11 +105,11 @@ enum Status {
 }
 
 model Lesson {
-  id        Int      @id @default(autoincrement())
+  id        Int        @id @default(autoincrement())
   type      LessonType
   title     String
   url       String
-  subject   Subject  @relation(fields: [subjectId], references: [id])
+  subject   Subject    @relation(fields: [subjectId], references: [id])
   subjectId Int
 }
 
@@ -115,14 +135,14 @@ enum QuizMode {
 }
 
 model Question {
-  id        Int      @id @default(autoincrement())
-  text      String
-  type      String
-  options   String[]
-  answer    String
-  quiz      Quiz     @relation(fields: [quizId], references: [id])
-  quizId    Int
-  answers   StudentAnswer[]
+  id      Int             @id @default(autoincrement())
+  text    String
+  type    String
+  options String[]
+  answer  String
+  quiz    Quiz            @relation(fields: [quizId], references: [id])
+  quizId  Int
+  answers StudentAnswer[]
 }
 
 model StudentAnswer {
@@ -137,20 +157,20 @@ model StudentAnswer {
 }
 
 model Conversation {
-  id        Int      @id @default(autoincrement())
-  subject   Subject  @relation(fields: [subjectId], references: [id])
+  id        Int       @id @default(autoincrement())
+  subject   Subject   @relation(fields: [subjectId], references: [id])
   subjectId Int
   messages  Message[]
 }
 
 model Message {
-  id             Int       @id @default(autoincrement())
+  id             Int          @id @default(autoincrement())
   conversation   Conversation @relation(fields: [conversationId], references: [id])
   conversationId Int
-  sender         User      @relation(fields: [senderId], references: [id])
+  sender         User         @relation(fields: [senderId], references: [id])
   senderId       Int
   content        String
-  timestamp      DateTime  @default(now())
+  timestamp      DateTime     @default(now())
 }
 
 model Notification {

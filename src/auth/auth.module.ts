@@ -6,13 +6,15 @@ import { JwtModule } from '@nestjs/jwt';
 import config from 'src/helper/config';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MailModule } from 'src/mail/mail.module';
+import { GoogleStrategy } from './strategies/google.strategy';
+import { FacebookStrategy } from './strategies/facebook.strategy';
 
 @Module({
   controllers: [AuthController],
-  providers: [AuthService , PrismaService],
-  exports :[AuthService],
+  providers: [AuthService, PrismaService, GoogleStrategy, FacebookStrategy],
+  exports: [AuthService],
   imports: [
-   JwtModule.registerAsync({
+    JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),
@@ -21,9 +23,9 @@ import { MailModule } from 'src/mail/mail.module';
       }),
       inject: [ConfigService],
     }),
-    
+
     MailModule
   ],
 
 })
-export class AuthModule {}
+export class AuthModule { }
