@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { UpdateChatDto } from './dto/update-chat.dto';
 import { PrismaService } from 'src/database/prisma.service';
@@ -35,7 +35,7 @@ export class ChatService {
   // All conversations
   async getAllConversations(userId: number) {
 
-    return this.prisma.conversation.findMany({
+    let conversations = await this.prisma.conversation.findMany({
       where: { OR: [{ studentId: userId }, { teacherId: userId }] },
       include: {
         student: {
@@ -50,6 +50,7 @@ export class ChatService {
         },
       },
     });
+    return conversations;
   }
 
   // Conversations with unread messages
@@ -103,6 +104,7 @@ export class ChatService {
 
   // Send message
   async sendMessage(userId: number, dto: CreateMessageDto) {
+    Logger.warn('from service:', dto);
     const conversation = await this.prisma.conversation.findUnique({
       where: { id: dto.conversationId },
     });
