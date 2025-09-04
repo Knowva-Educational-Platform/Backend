@@ -10,5 +10,5 @@ export class PaginationDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  take = 20;
+  take = 300;
 }

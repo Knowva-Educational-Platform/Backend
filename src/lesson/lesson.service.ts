@@ -4,7 +4,7 @@ import { UpdateLessonDto } from './dto/update-lesson.dto';
 import { CloudinaryService } from './cloudinary.service';
 import { UploadApiResponse } from 'cloudinary';
 import { PrismaService } from 'src/database/prisma.service';
-import { Lesson, LessonType } from 'generated/prisma';
+import { Lesson, LessonType } from '@prisma/client';
 import { unlink } from 'fs';
 
 @Injectable()

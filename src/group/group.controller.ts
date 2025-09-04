@@ -20,8 +20,8 @@ export class GroupController {
    * @param createGroupDto The group data
    * @returns The created group object
    */
-  create(@Param('subjectId') subjectId: string , @Body() createGroupDto: CreateGroupDto) {
-    return this.groupService.create(createGroupDto , +subjectId);
+  create(@Param('subjectId') subjectId: string , @Body() createGroupDto: CreateGroupDto , @Req () req: any) {
+    return this.groupService.create(createGroupDto , +subjectId , +req.user.id);
   }
 
   @Get('all/:subjectId')

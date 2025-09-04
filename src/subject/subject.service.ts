@@ -2,7 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateSubjectDto } from './dto/create-subject.dto';
 import { UpdateSubjectDto } from './dto/update-subject.dto';
 import { PrismaService } from 'src/database/prisma.service';
-import { Subject } from 'generated/prisma';
+import { Subject } from '@prisma/client';
 
 @Injectable()
 export class SubjectService {

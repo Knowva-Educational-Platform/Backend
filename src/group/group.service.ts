@@ -2,12 +2,12 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
 import { PrismaService } from 'src/database/prisma.service';
-import { Group } from 'generated/prisma';
+import { Group } from '@prisma/client';
 
 @Injectable()
 export class GroupService {
   constructor(private prisma: PrismaService) { }
-  async create(createGroupDto: CreateGroupDto, subjectId: number): Promise<Group> {
+  async create(createGroupDto: CreateGroupDto, subjectId: number , userId: number): Promise<Group> {
     let subject = await this.prisma.subject.findUnique({ where: { id: subjectId } });
     if (!subject) throw new BadRequestException("Subject not found");
     let group = await this.prisma.group.create({
@@ -15,6 +15,7 @@ export class GroupService {
         name: createGroupDto.name,
         capacity: createGroupDto.capacity,
         subjectId: subjectId,
+        createdById: userId
       },
     });
     return group;

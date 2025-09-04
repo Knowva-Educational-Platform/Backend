@@ -5,7 +5,7 @@ import { PrismaService } from 'src/database/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { Role, User } from 'generated/prisma';
+import { Role, User } from '@prisma/client';
 import { LoginDto } from './dto/login.dto';
 const otpGenerator = require('otp-generator')
 import { MailService } from 'src/mail/mail.service';

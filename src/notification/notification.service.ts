@@ -2,7 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { UpdateNotificationDto } from './dto/update-notification.dto';
 import { PrismaService } from 'src/database/prisma.service';
-import { Notification } from 'generated/prisma';
+import { Notification } from '@prisma/client';
 
 @Injectable()
 export class NotificationService {

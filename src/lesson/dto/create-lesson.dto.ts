@@ -1,5 +1,5 @@
 import { IsEnum, IsNotEmpty, IsString } from "class-validator";
-import { LessonType } from "generated/prisma";
+import { LessonType } from "@prisma/client";
 
 export class CreateLessonDto {
     @IsString()
