@@ -7,6 +7,9 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MailModule } from './mail/mail.module';
 import { SubjectModule } from './subject/subject.module';
 import { GroupModule } from './group/group.module';
+import { QuizService } from './quiz/quiz.service';
+import { QuizController } from './quiz/quiz.controller';
+import { QuizModule } from './quiz/quiz.module';
 import config from './helper/config';
 @Module({
   imports: [AuthModule,
@@ -29,9 +32,10 @@ import config from './helper/config';
     }),
     MailModule,
     SubjectModule,
-    GroupModule
+    GroupModule,
+    QuizModule
   ],
-  controllers: [AppController],
-  providers: [AppService],
+  controllers: [AppController, QuizController],
+  providers: [AppService, QuizService],
 })
 export class AppModule { }
