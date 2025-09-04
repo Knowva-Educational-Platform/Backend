@@ -98,7 +98,7 @@ export class QuizService {
 
         let totalScore = 0;
         const questions = await this.prisma.question.findMany({ where: { quizId: quiz.id } })
-        const questionAttempts = attemptQuizDto.questions.map(questionAttempt => {
+        const questionAttempts = await Promise.all(attemptQuizDto.questions.map(async questionAttempt => {
             const question = questions.find(q => q.id === questionAttempt.questionId)!
             if (question.type === QuestionType.MCQ || question.type === QuestionType.TrueFalse) {
                 if (question.answer === questionAttempt.answer) {
@@ -107,11 +107,12 @@ export class QuizService {
                 }
             }
             else if (question.type === QuestionType.Written) {
-                var score = this.calculateWrittenScore(question.answer, questionAttempt.answer);
+                var score = await this.calculateWrittenScore(question.answer, questionAttempt.answer)
+                totalScore += score;
                 return { ...questionAttempt, score };
             }
             throw new InternalServerErrorException("Invalid question type")
-        })
+        }))
 
         const attempt = await this.prisma.quizAttempt.create({
             data: {
@@ -125,5 +126,19 @@ export class QuizService {
         })
         return attempt
     }
-}
 
+    private async calculateWrittenScore(answer: string, attempt: string) {
+        const response = await fetch('https://test.com/v1/mark-written-answer', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                question: answer,
+                attempt
+            })
+        });
+        const raw = await response.json();
+        return raw.score;
+    }
+}
