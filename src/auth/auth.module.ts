@@ -6,6 +6,7 @@ import { JwtModule } from '@nestjs/jwt';
 import config from 'src/helper/config';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MailModule } from 'src/mail/mail.module';
+import { LessonModule } from 'src/lesson/lesson.module';
 
 @Module({
   controllers: [AuthController],
@@ -21,7 +22,7 @@ import { MailModule } from 'src/mail/mail.module';
       }),
       inject: [ConfigService],
     }),
-    
+    LessonModule,
     MailModule
   ],
 

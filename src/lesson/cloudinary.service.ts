@@ -4,10 +4,10 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class CloudinaryService {
-  async uploadFile(file: Express.Multer.File): Promise<any> {
+  async uploadFile(file: Express.Multer.File , folder?: string): Promise<any> {
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
-        { folder: 'lessons' }, // optional folder
+        { folder: folder || 'lessons' }, // optional folder
         (error, result) => {
           if (error) return reject(error);
           resolve(result);

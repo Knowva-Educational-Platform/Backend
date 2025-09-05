@@ -9,12 +9,15 @@ import { Role, User } from '@prisma/client';
 import { LoginDto } from './dto/login.dto';
 const otpGenerator = require('otp-generator')
 import { MailService } from 'src/mail/mail.service';
-import { LoginResponse, RegisterResponse, UpdateProfileResponse } from 'src/helper/interfaces/interfaces.response';
+import { IUser, LoginResponse, RegisterResponse, UpdateProfileResponse } from 'src/helper/interfaces/interfaces.response';
+import { UploadApiResponse } from 'cloudinary';
+import { CloudinaryService } from 'src/lesson/cloudinary.service';
 @Injectable()
 export class AuthService {
 
   constructor(private prisma: PrismaService, private jwtService: JwtService, private configService: ConfigService,
-    private readonly mailService: MailService
+    private readonly mailService: MailService,
+    private readonly cloudinaryService: CloudinaryService
   ) { }
 
   /**
@@ -23,7 +26,7 @@ export class AuthService {
    * @param createAuthDto 
    * @returns RegisterResponse
    */
-  async create(createAuthDto: CreateAuthDto): Promise<RegisterResponse> {
+  async create(createAuthDto: CreateAuthDto ,file: Express.Multer.File): Promise<RegisterResponse> {
     const useremail = await this.prisma.user.findUnique({
       where: {
         email: createAuthDto.email
@@ -36,6 +39,7 @@ export class AuthService {
       throw new BadRequestException('Password does not match');
     }
     const hashedPassword = await this.hashPassword(createAuthDto.password);
+    const result: UploadApiResponse = await this.cloudinaryService.uploadFile(file , 'usersAvatars');
     let role: Role;
     if (createAuthDto.roleToken === this.configService.get<string>('TEACHER_TOKEN')) {
       role = Role.TEACHER;
@@ -48,7 +52,12 @@ export class AuthService {
         role: role,
         email: createAuthDto.email,
         password: hashedPassword,
-        name: createAuthDto.name
+        name: createAuthDto.name,
+        phone: createAuthDto.phoneNumber,
+        imageUrl: result.secure_url,
+        publicId: result.public_id,
+        bio: createAuthDto.bio,
+        gender: createAuthDto.gender
       }
     });
     const token = await this.generateJwt({ id: user.id, role: user.role });
@@ -160,7 +169,7 @@ export class AuthService {
    * @description Get user profile
    * @returns { id, name, email, role }
    */
-  async getProfile(id: number) {
+  async getProfile(id: number):Promise<IUser> {
     const user = await this.prisma.user.findUnique({
       where: {
         id: id
@@ -173,7 +182,12 @@ export class AuthService {
       id: user.id,
       name: user.name,
       email: user.email,
-      role: user.role
+      role: user.role,
+      phoneNumber: user.phone ?? '',
+      imageUrl: user.imageUrl ?? '',
+      bio: user.bio ?? '',
+      createdAt: user.createdAt,
+      gender: user.gender
     };
   }
 
@@ -185,7 +199,8 @@ export class AuthService {
    * @returns UpdateProfileResponse
    */
 
-  async update(id: number, updateAuthDto: UpdateAuthDto): Promise<UpdateProfileResponse> {
+  async update(id: number, updateAuthDto: UpdateAuthDto , file: Express.Multer.File): Promise<IUser> {
+ 
     const user = await this.prisma.user.findUnique({
       where: {
         id: id
@@ -198,19 +213,31 @@ export class AuthService {
     if (updateAuthDto.password) {
       updatedData.password = await this.hashPassword(updateAuthDto.password);
     }
+    if (file) {
+      const result = await this.cloudinaryService.uploadFile(file , 'usersAvatars');
+      if (result) {
+        
+        updatedData = { ...updatedData, imageUrl: result.url };
+      }
+      
+    }
     const updatedUser = await this.prisma.user.update({
       where: {
         id: id
       },
       data: updatedData
     });
-    const token = await this.generateJwt({ id: updatedUser.id, role: updatedUser.role });
+    // const token = await this.generateJwt({ id: updatedUser.id, role: updatedUser.role });
     return {
       id: updatedUser.id,
       name: updatedUser.name,
       email: updatedUser.email,
       role: updatedUser.role,
-      token
+      phoneNumber: updatedUser.phone ?? '',
+      imageUrl: updatedUser.imageUrl ?? '',
+      bio: updatedUser.bio ?? '',
+      createdAt: updatedUser.createdAt,
+      gender: updatedUser.gender
     };
   }
 
@@ -237,6 +264,8 @@ export class AuthService {
         id: id
       }
     });
+    if  (user.publicId)
+      await this.cloudinaryService.deleteFile(user.publicId);
     return { message: 'User deleted successfully' };
   }
 

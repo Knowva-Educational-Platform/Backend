@@ -1,19 +1,27 @@
 import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 export class CreateAuthDto {
-   
-    @IsNotEmpty({message : "Name should not be empty"})
+
+    @IsNotEmpty({ message: "Name should not be empty" })
     @IsString()
-    name : string;
+    name: string;
     @IsEmail()
     @IsNotEmpty()
-    email : string;
+    email: string;
     @IsNotEmpty()
     @IsString()
-    password : string;
+    password: string;
     @IsNotEmpty()
     @IsString()
-    confirmPassword : string;
+    confirmPassword: string;
+
+    @IsOptional()
+    roleToken?: string;
+    @IsOptional()
+    phoneNumber?: string;
     
     @IsOptional()
-    roleToken? : string;
+    bio?: string;
+    @IsNotEmpty({ message: 'Gender is required' })
+    @IsEnum(['male', 'female'], { message: 'Gender must be either "male" or "female"' })
+    gender: string
 }

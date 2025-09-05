@@ -3,6 +3,7 @@ import { CreateSubjectDto } from './dto/create-subject.dto';
 import { UpdateSubjectDto } from './dto/update-subject.dto';
 import { PrismaService } from 'src/database/prisma.service';
 import { Subject } from '@prisma/client';
+import { ISubject } from 'src/helper/interfaces/interfaces.response';
 
 @Injectable()
 export class SubjectService {
@@ -39,7 +40,7 @@ export class SubjectService {
 
 
 
-  async findOne(id: number) {
+  async findOne(id: number) : Promise<ISubject> {
     let subject = await this.prisma.subject.findFirst({
       where: {
         id 
@@ -60,10 +61,20 @@ export class SubjectService {
     if (!subject) {
       throw new BadRequestException('Subject not found');
     }
-    return subject;
+    return {
+      id: subject.id.toString(),
+      name: subject.title,
+      description: subject.description || '',
+      createdAt: subject.createdAt,
+      createdBy: {
+        id: subject.teacher.id.toString(),
+        email: subject.teacher.email,
+        name: subject.teacher.name,
+      },
+    };
   }
 
-  async findall(){
+  async findall(): Promise<ISubject[]> {
     let subjects = await this.prisma.subject.findMany({
       include: {
         teacher: {
@@ -78,12 +89,24 @@ export class SubjectService {
       },
       
     });
-    return subjects;
+    return subjects.map((subject) => {
+      return {
+        id: subject.id.toString(),
+        name: subject.title,
+        description: subject.description || '',
+        createdAt: subject.createdAt,
+        createdBy: {
+          id: subject.teacher.id.toString(),
+          email: subject.teacher.email,
+          name: subject.teacher.name,
+        },
+      };
+    });
   }
 
  
 
-  async update(id: number, updateSubjectDto: UpdateSubjectDto , userId: number): Promise<Subject> {
+  async update(id: number, updateSubjectDto: UpdateSubjectDto , userId: number): Promise<ISubject> {
 
     let subject = await this.prisma.subject.findUnique({
       where: {
@@ -104,8 +127,29 @@ export class SubjectService {
         title: updateSubjectDto.title,
         description: updateSubjectDto.description,
       },
+      include: {
+        teacher: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            
+          },
+        },
+      },
     });
-    return updatedSubject;
+    return {
+      id: updatedSubject.id.toString(),
+      name: updatedSubject.title,
+      description: updatedSubject.description || '',
+      createdAt: updatedSubject.createdAt,
+      createdBy: {
+        id: updatedSubject.teacherId.toString(),
+        name: updatedSubject.teacher.name,
+        email: updatedSubject.teacher.email,
+        
+      },
+    };
 
   }
 

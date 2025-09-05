@@ -6,6 +6,7 @@ import { CreateConversationDto } from './dto/create-chat.dto';
 import { CreateMessageDto } from './dto/create-massege.dto';
 import { PaginationDto } from './dto/pagination.dto';
 import { User } from '@prisma/client';
+import { IChat, IMessage } from 'src/helper/interfaces/interfaces.response';
 
 @Injectable()
 export class ChatService {
@@ -61,9 +62,9 @@ export class ChatService {
       });
     }
 
-    
 
-    return conversation ;
+
+    return conversation;
   }
 
   // All conversations (both direct and group)
@@ -123,8 +124,8 @@ export class ChatService {
   }
 
   // Conversations with unread messages
-  async getUnreadConversations(userId: number) {
-    return this.prisma.conversation.findMany({
+  async getUnreadConversations(userId: number): Promise<IChat[]> {
+    let conversations = await this.prisma.conversation.findMany({
       where: {
         OR: [
           // Direct conversations with unread messages
@@ -202,11 +203,35 @@ export class ChatService {
         },
       },
     });
+
+    return conversations.map(
+      (conversation) => ({
+        id: conversation.id.toString(),
+        isGroup: conversation.isGroup,
+        name: conversation.isGroup ? conversation.group!.name : conversation.student!.name,
+        users: conversation.isGroup ? conversation.group!.memberships.map(m => {
+          return { id: m.student.id.toString(), name: m.student.name, email: m.student.email }
+        }) : [
+          { id: conversation.student!.id.toString(), name: conversation.student!.name, email: conversation.student!.email }
+          , { id: conversation.teacher!.id.toString(), name: conversation.teacher!.name, email: conversation.teacher!.email }],
+        lastMessage: {
+          chatId: conversation.id.toString(),
+          id: conversation.messages[0].id.toString(),
+          text: conversation.messages[0].content,
+          senderId: conversation.messages[0].senderId.toString(),
+          timestamp: conversation.messages[0].timestamp,
+          deliveredTo: conversation.messages[0].deliveredTo,
+          readBy: conversation.messages[0].readBy,
+          mediaType: conversation.messages[0].mediaType ?? undefined,
+          mediaUrl: conversation.messages[0].mediaUrl ?? undefined
+        },
+      })
+    );
   }
 
   // Active chats (has messages)
-  async getActiveChats(userId: number) {
-    return this.prisma.conversation.findMany({
+  async getActiveChats(userId: number): Promise<IChat[]> {
+    let conversations = await this.prisma.conversation.findMany({
       where: {
         OR: [
           // Direct conversations
@@ -256,6 +281,26 @@ export class ChatService {
         },
       },
     });
+
+    return conversations.map(
+      (conversation) => ({
+        id: conversation.id.toString(),
+        isGroup: conversation.isGroup,
+        name: conversation.isGroup ? conversation.group!.name : conversation.student!.name,
+        users: conversation.isGroup ? conversation.group!.memberships.map(m => { return { id: m.student.id.toString(), name: m.student.name, email: m.student.email } }) : [{ id: conversation.student!.id.toString(), name: conversation.student!.name, email: conversation.student!.email }, { id: conversation.teacher!.id.toString(), name: conversation.teacher!.name, email: conversation.teacher!.email }],
+        lastMessage: {
+          chatId: conversation.id.toString(),
+          id: conversation.messages[0].id.toString(),
+          text: conversation.messages[0].content,
+          senderId: conversation.messages[0].senderId.toString(),
+          timestamp: conversation.messages[0].timestamp,
+          deliveredTo: conversation.messages[0].deliveredTo,
+          readBy: conversation.messages[0].readBy,
+          mediaType: conversation.messages[0].mediaType ?? undefined,
+          mediaUrl: conversation.messages[0].mediaUrl ?? undefined
+        },
+      })
+    );
   }
 
   // Send message (works for both direct and group chats)
@@ -347,7 +392,7 @@ export class ChatService {
 
 
   // Paginate messages
-  async getMessages(conversationId: number, pagination: PaginationDto, userId: number) {
+  async getMessages(conversationId: number, pagination: PaginationDto, userId: number): Promise<IMessage[]> {
     const conversation = await this.prisma.conversation.findUnique({
       where: { id: conversationId },
       include: {
@@ -393,7 +438,17 @@ export class ChatService {
       skip,
       take
     })
-    return messages;
+    return messages.map(m => ({
+      id: m.id.toString(),
+      chatId: m.conversationId.toString(),
+      senderId: m.senderId.toString(),
+      text: m.content,
+      timestamp: m.timestamp,
+      deliveredTo: m.deliveredTo ?? [], // default [] if null
+      readBy: m.readBy ?? [],
+      mediaUrl: m.mediaUrl ?? undefined,
+      mediaType: m.mediaType ?? undefined
+    }));
   }
 
   // Mark messages as read (handles both direct and group)
@@ -464,7 +519,7 @@ export class ChatService {
           senderId: { not: userId },
           readAt: null,
         },
-        data: { readAt:  new Date() },
+        data: { readAt: new Date() },
       });
     }
   }

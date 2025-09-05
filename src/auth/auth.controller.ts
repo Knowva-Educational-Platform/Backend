@@ -1,22 +1,36 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Req, UseGuards, Query, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Req, UseGuards, Query, Logger, UploadedFile, UseInterceptors, BadRequestException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { CreateAuthDto } from './dto/create-auth.dto';
 import { UpdateAuthDto } from './dto/update-auth.dto';
 import { LoginDto } from './dto/login.dto';
 import { AuthenticationGuard } from 'src/guards/authentication.guard';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
 
   @Post('register')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+
+      fileFilter: (req, file, cb) => {
+        if (!file) {
+          return cb(null, false);
+        }
+        cb(null, true);
+      }
+    }),
+  )
   /**
    * Create a new user
    * @param createAuthDto 
    * @returns RegisterResponse
    */
-  create(@Body() createAuthDto: CreateAuthDto) {
-    return this.authService.create(createAuthDto);
+  create(@Body() createAuthDto: CreateAuthDto, @UploadedFile() file: Express.Multer.File) {
+    return this.authService.create(createAuthDto , file);
   }
 
   @Post('login')
@@ -47,7 +61,7 @@ export class AuthController {
    * @param otp 
    * @returns { message: string }
    */
-   verifyOtp(@Body() body: { email: string; otp: string }) {
+  verifyOtp(@Body() body: { email: string; otp: string }) {
     return this.authService.verifyOtp(body.email, body.otp);
   }
 
@@ -64,6 +78,18 @@ export class AuthController {
   }
 
   @Patch('update-profile')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+
+      fileFilter: (req, file, cb) => {
+        if (!file) {
+          return cb(null, false);
+        }
+        cb(null, true);
+      }
+    }),
+  )
   @UseGuards(AuthenticationGuard)
   /**
    * Update a user profile
@@ -71,8 +97,8 @@ export class AuthController {
    * @param updateAuthDto the user data to update
    * @returns the updated user object
    */
-  update(@Req() req: any, @Body() updateAuthDto: UpdateAuthDto) {
-    return this.authService.update(+req.user.id, updateAuthDto);
+  update(@Req() req: any, @Body() updateAuthDto: UpdateAuthDto , @UploadedFile() file: Express.Multer.File) {
+    return this.authService.update(+req.user.id, updateAuthDto , file);
   }
 
   @Delete('delete-account')

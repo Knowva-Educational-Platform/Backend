@@ -9,6 +9,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 @Module({
   controllers: [LessonController],
   providers: [LessonService, CloudinaryService, PrismaService],
+  exports: [CloudinaryService],
   imports: [
     JwtModule.registerAsync({
       imports: [ConfigModule],
