@@ -94,12 +94,12 @@ interface IUser {
  interface IMaterial {
   id: string;
   name: string;
-  type: "video" | "document" | "pdf"; // restrict to specific values
+  type: string; // restrict to specific values
   groupId: string;
   subjectId: string;
   description: string;
   fileUrl: string;
-  createdBy: string;
+  createdBy: FlutterUser;
   createdAt: Date;
 }
 

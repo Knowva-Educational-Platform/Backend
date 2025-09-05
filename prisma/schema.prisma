@@ -86,6 +86,8 @@ model Group {
   createdBy User @relation(fields: [createdById] , references: [id])
   createdById Int
   Conversation Conversation[]
+
+  Lesson Lesson[]
 }
 
 model Membership {
@@ -108,13 +110,15 @@ enum Status {
 
 model Lesson {
   id        Int      @id @default(autoincrement())
-  type      LessonType
+  type      String
   title     String
   url       String
   publicId  String
   createdAt DateTime @default(now())
   subject   Subject  @relation(fields: [subjectId], references: [id])
   subjectId Int
+  group Group @relation(fields: [groupId] , references: [id])
+  groupId Int
 }
 
 enum LessonType {
