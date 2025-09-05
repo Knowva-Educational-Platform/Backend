@@ -51,32 +51,14 @@ export class AuthController {
   }
 
   // ===== Google =====
-  @Get('google')
-  @UseGuards(AuthGuard('google'))
-  async googleLogin() { }
-
-  @Get('google/callback')
-  @UseGuards(AuthGuard('google'))
-  async googleCallback(@Req() req: any) {
-    const o = req.user;
-    const user = await this.authService.findOrCreateOAuthUser(o);
-    const token = this.authService.generateJwt({ id: user.id, role: user.role });
-    return { user, token };
+  @Post('google')
+  async googleLogin(@Body('idToken') idToken: string) {
+    return this.authService.loginWithGoogle(idToken);
   }
 
   // ===== Facebook =====
-  @Get('facebook')
-  @UseGuards(AuthGuard('facebook'))
-  async facebookLogin() {
-    return
-  }
-
-  @Get('facebook/callback')
-  @UseGuards(AuthGuard('facebook'))
-  async facebookCallback(@Req() req: any) {
-    const o = req.user;
-    const user = await this.authService.findOrCreateOAuthUser(o);
-    const token = this.authService.generateJwt({ id: user.id, role: user.role });
-    return { user, token };
+  @Post('facebook')
+  async facebookLogin(@Body('accessToken') accessToken: string) {
+    return this.authService.loginWithFacebook(accessToken);
   }
 }

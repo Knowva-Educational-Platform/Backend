@@ -2,13 +2,10 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
-import { JwtModule } from '@nestjs/jwt';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigModule } from '@nestjs/config';
 import { MailModule } from './mail/mail.module';
 import { SubjectModule } from './subject/subject.module';
 import { GroupModule } from './group/group.module';
-import { QuizService } from './quiz/quiz.service';
-import { QuizController } from './quiz/quiz.controller';
 import { QuizModule } from './quiz/quiz.module';
 import config from './helper/config';
 @Module({
@@ -21,21 +18,12 @@ import config from './helper/config';
 
       }
     ),
-    JwtModule.registerAsync({
-      imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET'),
-        signOptions: { expiresIn: '1h' },
-        global: true, 
-      }),
-      inject: [ConfigService],
-    }),
     MailModule,
     SubjectModule,
     GroupModule,
     QuizModule
   ],
-  controllers: [AppController, QuizController],
-  providers: [AppService, QuizService],
+  controllers: [AppController],
+  providers: [AppService],
 })
 export class AppModule { }

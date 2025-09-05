@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { CreateAuthDto } from './dto/create-auth.dto';
 import { UpdateAuthDto } from './dto/update-auth.dto';
 import { PrismaService } from 'src/database/prisma.service';
@@ -10,8 +10,12 @@ import { LoginDto } from './dto/login.dto';
 const otpGenerator = require('otp-generator')
 import { MailService } from 'src/mail/mail.service';
 import { LoginResponse, RegisterResponse, UpdateProfileResponse } from 'src/helper/interfaces/interfaces.response';
+import { OAuth2Client } from 'google-auth-library';
+import axios from 'axios';
+
 @Injectable()
 export class AuthService {
+  private googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
   constructor(private prisma: PrismaService, private jwtService: JwtService, private configService: ConfigService,
     private readonly mailService: MailService
@@ -264,59 +268,90 @@ export class AuthService {
     return otp;
   }
 
-  async findOrCreateOAuthUser(oauth: {
+  async loginWithGoogle(idToken: string) {
+    try {
+      const ticket = await this.googleClient.verifyIdToken({
+        idToken,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+      const payload = ticket.getPayload();
+      if (!payload?.email || !payload?.name) throw new UnauthorizedException();
+
+      return this.findOrCreateUser({
+        provider: Provider.GOOGLE,
+        providerAccountId: payload.sub,
+        email: payload.email,
+        name: payload.name,
+        avatar: payload.picture,
+      });
+    } catch (error) {
+      throw new UnauthorizedException("Invalid Google authentication request");
+    }
+  }
+
+  async loginWithFacebook(accessToken: string) {
+    try {
+      const { data } = await axios.get(
+        `https://graph.facebook.com/me?fields=id,name,email,picture&access_token=${accessToken}`,
+      );
+      if (!data?.email || !data?.name) throw new UnauthorizedException();
+
+      return this.findOrCreateUser({
+        provider: Provider.FACEBOOK,
+        providerAccountId: data.id,
+        email: data.email,
+        name: data.name,
+        avatar: data.picture?.data?.url,
+      });
+    } catch (error) {
+      throw new UnauthorizedException("Invalid Facebook authentication request");
+    }
+  }
+
+  private async findOrCreateUser(info: {
     provider: Provider;
     providerAccountId: string;
-    email: string | null;
-    name?: string | null;
-    accessToken?: string | null;
-    refreshToken?: string | null;
+    email: string;
+    name: string;
+    avatar?: string;
   }) {
-    // Account already exists
-    const existingAccount = await this.prisma.account.findUnique({
-      where: {
-        provider_providerAccountId: {
-          provider: oauth.provider as Provider, providerAccountId: oauth.providerAccountId
-        }
-      },
-      include: { user: true }
-    });
+    let user = await this.prisma.user.findUnique({ where: { email: info.email } });
 
-    if (existingAccount) return existingAccount.user;
-
-    // Check if user already exists with this email but no account
-    if (oauth.email) {
-      const existingUser = await this.prisma.user.findUnique({ where: { email: oauth.email } });
-      if (existingUser) {
-        await this.prisma.account.create({
-          data: {
-            provider: oauth.provider,
-            providerAccountId: oauth.providerAccountId,
-            userId: existingUser.id,
-            accessToken: oauth.accessToken ?? undefined,
-            refreshToken: oauth.refreshToken ?? undefined,
-          }
-        });
-        return existingUser;
-      }
+    if (!user) {
+      user = await this.prisma.user.create({
+        data: {
+          email: info.email,
+          name: info.name,
+          avatar: info.avatar,
+          password: '', // not used for OAuth users
+          role: Role.STUDENT, // default role
+          accounts: {
+            create: {
+              provider: info.provider as Provider,
+              providerAccountId: info.providerAccountId,
+            },
+          },
+        },
+      });
+    } else {
+      // ensure account relation exists
+      await this.prisma.account.upsert({
+        where: {
+          provider_providerAccountId: {
+            provider: info.provider,
+            providerAccountId: info.providerAccountId,
+          },
+        },
+        update: {},
+        create: {
+          provider: info.provider,
+          providerAccountId: info.providerAccountId,
+          userId: user.id,
+        },
+      });
     }
 
-    // Create new user and connect account
-    return this.prisma.user.create({
-      data: {
-        email: oauth.email!,
-        name: oauth.name!,
-        role: Role.STUDENT,
-        password: '',
-        accounts: {
-          create: {
-            provider: oauth.provider as Provider,
-            providerAccountId: oauth.providerAccountId,
-            accessToken: oauth.accessToken,
-            refreshToken: oauth.refreshToken,
-          }
-        }
-      }
-    });
+    const token = this.jwtService.sign({ id: user.id, role: user.role });
+    return { user, token };
   }
 }

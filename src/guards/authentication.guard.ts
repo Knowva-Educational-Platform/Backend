@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 
 @Injectable()
 export class AuthenticationGuard implements CanActivate {
-   constructor(private jwtService: JwtService) {}
+  constructor(private jwtService: JwtService) { }
   canActivate(
     context: ExecutionContext,
   ): boolean | Promise<boolean> | Observable<boolean> {
@@ -21,7 +21,7 @@ export class AuthenticationGuard implements CanActivate {
       throw new UnauthorizedException('Invalid authentication token');
     }
 
-     // Attach the token to the request object
+    // Attach the token to the request object
     return true;
   }
   private extractTokenFromHeader(context: ExecutionContext): string | null {
