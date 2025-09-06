@@ -1,19 +1,24 @@
-import { IsEnum, IsOptional, IsString } from "class-validator";
+import { IsEnum, IsNumber, IsOptional, IsString } from "class-validator";
 import { QuestionType } from "generated/prisma/client";
 
-class UpdateQuestionDto {
+export class UpdateQuestionDto {
     @IsOptional()
     @IsString()
-    question: string;
+    question?: string;
+
     @IsOptional()
     @IsEnum(QuestionType)
-    type: QuestionType;
+    type?: QuestionType;
+
     @IsOptional()
     @IsString({ each: true })
-    options: string[];
+    options?: string[];
+
     @IsOptional()
     @IsString()
-    answer: string;
-}
+    answer?: string;
 
-export default UpdateQuestionDto;
+    @IsOptional()
+    @IsNumber()
+    score?: number;
+}

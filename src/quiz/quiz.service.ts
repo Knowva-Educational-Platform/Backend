@@ -1,144 +1,171 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from 'src/database/prisma.service';
-import CreateQuizDto from './dto/create-quiz.dto';
-import UpdateQuizDto from './dto/update-quiz.dto';
-import UpdateQuestionDto from './dto/update-question.dto';
-import { QuestionType, QuizMode } from 'generated/prisma';
-import { validate } from 'class-validator';
-import { plainToInstance } from 'class-transformer';
-import AttemptQuizDto from './dto/attempt-quiz.dto';
+import { CreateQuizDto } from './dto/create-quiz.dto';
+import { UpdateQuizDto } from './dto/update-quiz.dto';
+import { CreateQuestionDto } from './dto/create-question.dto';
+import { QuestionMode, QuestionType } from 'generated/prisma';
+import { UpdateQuestionDto } from './dto/update-question.dto';
 @Injectable()
 export class QuizService {
     constructor(private prisma: PrismaService) { }
 
-    async createQuiz(subjectId: number, groupId: number, createdById: number, title: string, mode: QuizMode, createQuizDto?: CreateQuizDto) {
-        const response = mode === QuizMode.AI ? await this.requestQuizFromAi() : createQuizDto;
-        const quiz = await this.prisma.quiz.create({
-            data: {
-                mode, subjectId, groupId, createdById, title, questions: {
-                    create: response!.questions.map(question => {
-                        if (question.type === QuestionType.TrueFalse) {
-                            return { ...question, options: ["True", "False"] }
-                        }
-                        return question;
-                    })
-                }
-            }
-        })
+    async getQuizes(userId: number) {
+        return this.prisma.quiz.findMany({ where: { createdById: userId } });
     }
 
-    private async requestQuizFromAi() {
-        const response = await fetch('https://test.com/v1/generate-quiz', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                messages: [{ role: 'user', content: "content" }]
-            })
+    async getQuiz(id: number, userId: number) {
+        return this.prisma.quiz.findUnique({
+            where: { id, createdById: userId },
+            include: { questions: true }
         });
-        const raw = await response.json();
-
-        const dto = plainToInstance(CreateQuizDto, raw);
-
-        const errors = await validate(dto);
-        if (errors.length > 0) {
-            throw new Error(`Validation failed: ${JSON.stringify(errors)}`);
-        }
-        return dto;
     }
 
-    async getQuiz(id: number) {
-        const quiz = await this.prisma.quiz.findUnique({
-            where: { id }
-        })
-        return quiz
+    async createQuiz(userId: number, createQuizDto: CreateQuizDto) {
+        return this.prisma.quiz.create({ data: { ...createQuizDto, createdById: userId } });
     }
 
     async updateQuiz(id: number, userId: number, updateQuizDto: UpdateQuizDto) {
-        const quiz = await this.prisma.quiz.update({
-            where: { id, createdById: userId },
-            data: updateQuizDto
-        })
-        return quiz
+        return this.prisma.quiz.update({ where: { id, createdById: userId }, data: updateQuizDto });
     }
 
-    async updateQuestion(id: number, userId: number, updateQuestionDto: UpdateQuestionDto) {
-        const question = await this.prisma.question.update({
-            where: { id, quiz: { createdById: userId } },
-            data: updateQuestionDto
-        })
-        return question
-    }
-
-    async deleteQuiz(id: number, userId: number) {
-        const quiz = await this.prisma.quiz.delete({
-            where: { id, createdById: userId }
-        })
-        return quiz
-    }
-
-    async deleteQuestion(id: number, quizId: number, userId: number) {
-        const question = await this.prisma.question.delete({
-            where: { id, quizId, quiz: { createdById: userId } }
-        })
-        return question
-    }
-
-    async attemptQuiz(id: number, userId: number, attemptQuizDto: AttemptQuizDto) {
+    async duplicateQuiz(id: number, userId: number) {
         const quiz = await this.prisma.quiz.findUnique({
-            where: { id }
-        })
+            where: {
+                id,
+                createdById: userId
+            },
+            include: {
+                questions: {
+                    select: { id: true }
+                }
+            }
+        });
+
         if (!quiz) {
-            throw new Error('Quiz not found')
-        }
-        if (quiz.createdById === userId) {
-            throw new Error('You cannot attempt your own quiz')
+            throw new InternalServerErrorException('Quiz not found');
         }
 
-        let totalScore = 0;
-        const questions = await this.prisma.question.findMany({ where: { quizId: quiz.id } })
-        const questionAttempts = await Promise.all(attemptQuizDto.questions.map(async questionAttempt => {
-            const question = questions.find(q => q.id === questionAttempt.questionId)!
-            if (question.type === QuestionType.MCQ || question.type === QuestionType.TrueFalse) {
-                if (question.answer === questionAttempt.answer) {
-                    totalScore += question.score
-                    return { ...questionAttempt, score: question.score };
-                }
-            }
-            else if (question.type === QuestionType.Written) {
-                var score = await this.calculateWrittenScore(question.answer, questionAttempt.answer)
-                totalScore += score;
-                return { ...questionAttempt, score };
-            }
-            throw new InternalServerErrorException("Invalid question type")
-        }))
-
-        const attempt = await this.prisma.quizAttempt.create({
+        const newQuiz = await this.prisma.quiz.create({
             data: {
-                quizId: quiz.id,
-                studentId: userId,
-                score: totalScore,
-                studentAnswers: {
-                    create: questionAttempts
+                ...quiz,
+                title: `${quiz.title} Copy`,
+                createdById: userId,
+                questions: {
+                    connect: quiz.questions.map((question) => ({ id: question.id }))
                 }
             }
-        })
-        return attempt
+        });
+        return newQuiz;
     }
 
-    private async calculateWrittenScore(answer: string, attempt: string) {
-        const response = await fetch('https://test.com/v1/mark-written-answer', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                question: answer,
-                attempt
-            })
+    async getQuestions(userId: number) {
+        return this.prisma.question.findMany({ where: { createdById: userId } });
+    }
+
+    async getQuestion(id: number, userId: number) {
+        return this.prisma.question.findUnique({ where: { id, createdById: userId } });
+    }
+
+    async addOldQuestionToQuiz(quizId: number, questionId: number) {
+        return this.prisma.quiz.update({
+            where: { id: quizId },
+            data: {
+                questions: {
+                    connect: { id: questionId }
+                }
+            }
         });
-        const raw = await response.json();
-        return raw.score;
+    }
+
+    private validateQuestionOptions(question: any) {
+        if (question.type === QuestionType.TrueFalse) {
+            if (question.answer !== 'True' && question.answer !== 'False')
+                throw new InternalServerErrorException('Answer must be True or False');
+
+            question.options = ['True', 'False'];
+        }
+        else if (question.type === QuestionType.Written) {
+            question.options = [];
+        }
+    }
+
+    async addManualQuestionToQuiz(userId: number, quizId: number, questionDto: CreateQuestionDto) {
+        this.validateQuestionOptions(questionDto);
+
+        return this.prisma.question.create({
+            data: { ...questionDto, createdById: userId, quizId, mode: QuestionMode.MANUAL }
+        });
+    }
+
+    async duplicateQuestion(userId: number, questionId: number) {
+        const question = await this.prisma.question.findUnique({
+            where: {
+                id: questionId,
+                createdById: userId
+            }
+        });
+
+        if (!question) {
+            throw new InternalServerErrorException('Question not found');
+        }
+
+        const newQuestion = await this.prisma.question.create({ data: question });
+        return newQuestion;
+    }
+
+    async updateQuestion(userId: number, questionId: number, questionDto: UpdateQuestionDto) {
+        this.validateQuestionOptions(questionDto);
+
+        return this.prisma.question.update({ where: { id: questionId, createdById: userId }, data: questionDto });
+    }
+
+    async removeQuestionFromQuiz(userId: number, questionId: number) {
+        return this.prisma.question.update({
+            where: { id: questionId, createdById: userId },
+            data: { quizId: undefined }
+        });
+    }
+
+    async deleteQuestion(userId: number, questionId: number) {
+        return this.prisma.question.delete({ where: { id: questionId, createdById: userId, quizId: undefined } });
+    }
+
+    async getMyQuizAttempts(userId: number, quizId: number) {
+        return await this.prisma.quizAttempt.findMany({ where: { studentId: userId, quizId } });
+    }
+
+    async getQuizAttempts(quizId: number, userId: number) {
+        return await this.prisma.quiz.findMany({ where: { id: quizId, createdById: userId }, select: { attempts: true } });
+    }
+
+    async startQuizAttempt(userId: number, quizId: number) {
+        return this.prisma.quiz.update({
+            where: { id: quizId, createdById: userId, startsAt: { lte: new Date() }, endsAt: { gt: new Date() } },
+            data: {
+                attempts: { create: { studentId: userId } }
+            }
+        });
+    }
+
+    async addQuestionAnswer(quizAttemptId: number, questionId: number, answer: string) {
+        return this.prisma.studentAnswer.create({ data: { quizAttemptId, questionId, answer } });
+    }
+
+    async updateQuestionAnswer(quizAttemptId: number, questionId: number, answer: string) {
+        return this.prisma.studentAnswer.update({
+            where: {
+                quizAttemptId_questionId: {
+                    quizAttemptId,
+                    questionId,
+                },
+                quizAttempt: {
+                    quiz: {
+                        canChangeAnswer: true,
+                        endsAt: { gt: new Date() }
+                    }
+                }
+            },
+            data: { answer }
+        });
     }
 }

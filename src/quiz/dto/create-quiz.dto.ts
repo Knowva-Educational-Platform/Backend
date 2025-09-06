@@ -1,13 +1,27 @@
-import { IsNotEmpty, IsArray, ValidateNested } from "class-validator";
-import { Type } from "class-transformer";
-import CreateQuestionDto from "./create-question.dto";
+import { IsNotEmpty, IsString, IsDateString, IsNumber, IsBoolean, IsOptional } from "class-validator";
 
-class CreateQuizDto {
+export class CreateQuizDto {
     @IsNotEmpty()
-    @IsArray()
-    @ValidateNested({ each: true })
-    @Type(() => CreateQuestionDto)
-    questions: CreateQuestionDto[];
-}
+    @IsString()
+    title: string;
 
-export default CreateQuizDto;
+    @IsNotEmpty()
+    @IsNumber()
+    subjectId: number;
+
+    @IsNotEmpty()
+    @IsNumber()
+    groupId: number;
+
+    @IsNotEmpty()
+    @IsDateString()
+    startsAt: Date;
+
+    @IsNotEmpty()
+    @IsDateString()
+    endsAt: Date;
+
+    @IsOptional()
+    @IsBoolean()
+    canChangeAnswer?: boolean;
+}

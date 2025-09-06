@@ -1,9 +1,31 @@
-import { IsString, IsOptional } from "class-validator";
+import { IsBoolean, IsDateString, IsNumber, IsOptional, IsString } from "class-validator";
 
-class UpdateQuizDto {
+export class UpdateQuizDto {
     @IsOptional()
     @IsString()
-    title: string;
-}
+    title?: string;
 
-export default UpdateQuizDto;
+    @IsOptional()
+    @IsNumber()
+    subjectId?: number;
+
+    @IsOptional()
+    @IsNumber()
+    groupId?: number;
+
+    @IsOptional()
+    @IsDateString()
+    startsAt?: Date;
+
+    @IsOptional()
+    @IsDateString()
+    endsAt?: Date;
+
+    @IsOptional()
+    @IsBoolean()
+    isActive?: boolean;
+
+    @IsOptional()
+    @IsBoolean()
+    canChangeAnswer?: boolean;
+}

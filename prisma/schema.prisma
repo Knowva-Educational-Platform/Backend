@@ -45,6 +45,8 @@ model User {
   accounts Account[]
 
   createdQuizzes Quiz[]
+
+  createdQuestions Question[]
 }
 
 enum Role {
@@ -123,37 +125,42 @@ enum LessonType {
 }
 
 model Quiz {
-  id          Int      @id @default(autoincrement())
-  title       String
-  mode        QuizMode
-  status      String   @default("DRAFT")
-  subject     Subject  @relation(fields: [subjectId], references: [id])
-  subjectId   Int
-  group       Group    @relation(fields: [groupId], references: [id])
-  groupId     Int
-  createdBy   User     @relation(fields: [createdById], references: [id])
-  createdById Int
+  id              Int      @id @default(autoincrement())
+  title           String
+  status          String   @default("DRAFT")
+  subject         Subject  @relation(fields: [subjectId], references: [id])
+  subjectId       Int
+  group           Group    @relation(fields: [groupId], references: [id])
+  groupId         Int
+  createdBy       User     @relation(fields: [createdById], references: [id])
+  createdById     Int
+  startsAt        DateTime
+  endsAt          DateTime
+  isActive        Boolean  @default(false)
+  canChangeAnswer Boolean  @default(true)
 
   questions Question[]
 
   attempts QuizAttempt[]
-}
 
-enum QuizMode {
-  MANUAL
-  AI
+  @@index([id, createdById])
 }
 
 model Question {
-  id       Int             @id @default(autoincrement())
-  question String
-  type     QuestionType
-  options  String[]
-  answer   String
-  quiz     Quiz            @relation(fields: [quizId], references: [id])
-  score    Float
-  quizId   Int
-  answers  StudentAnswer[]
+  id          Int             @id @default(autoincrement())
+  question    String
+  type        QuestionType
+  options     String[]
+  answer      String
+  quiz        Quiz            @relation(fields: [quizId], references: [id])
+  quizId      Int
+  createdBy   User?           @relation(fields: [createdById], references: [id])
+  createdById Int?
+  mode        QuestionMode
+  score       Float
+  answers     StudentAnswer[]
+
+  @@index([id, createdById])
 }
 
 enum QuestionType {
@@ -162,13 +169,18 @@ enum QuestionType {
   Written
 }
 
+enum QuestionMode {
+  MANUAL
+  AI
+}
+
 model QuizAttempt {
   id             Int             @id @default(autoincrement())
   quiz           Quiz            @relation(fields: [quizId], references: [id])
   quizId         Int
   student        User            @relation(fields: [studentId], references: [id])
   studentId      Int
-  score          Float
+  score          Float?
   createdAt      DateTime        @default(now())
   studentAnswers StudentAnswer[]
 }
@@ -181,6 +193,8 @@ model StudentAnswer {
   quizAttemptId Int
   answer        String
   score         Float       @default(0)
+
+  @@unique([quizAttemptId, questionId])
 }
 
 model Conversation {
