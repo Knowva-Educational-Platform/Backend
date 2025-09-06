@@ -5,6 +5,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PrismaService } from 'src/database/prisma.service';
 import { NotificationModule } from 'src/notification/notification.module';
+import { GroupModule } from 'src/group/group.module';
 
 @Module({
   controllers: [EnrollmentController],
@@ -19,7 +20,8 @@ import { NotificationModule } from 'src/notification/notification.module';
       }),
       inject: [ConfigService],
     }),
-    NotificationModule
+    NotificationModule,
+    GroupModule
   ],
 })
 export class EnrollmentModule { }

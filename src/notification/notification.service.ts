@@ -17,27 +17,24 @@ export class NotificationService {
     return notification;
   }
 
-  async markAsRead(id: number) : Promise<Notification> {
-    let notification = await this.prisma.notification.findUnique({
-      where: { id: id }
-    });
-    if (!notification) {
-      throw new BadRequestException('Notification not found');
-    }
-    if (notification.read === true) {
-      return notification;
-    }
-    let undatednotification = await this.prisma.notification.update({
+  async markAllAsRead( userid: number)  {
+    let notification = await this.prisma.notification.findMany({
       where: {
-        id: id
+        userId: userid
+      }
+    });
+
+    await this.prisma.notification.updateMany({
+      where: {
+        userId: userid
       },
       data: {
         read: true
       }
     });
-    return {
-      ...undatednotification
-    };
+
+    
+
   }
 
   async getUserNotifications(userId: number) : Promise<Notification[]> {
