@@ -8,7 +8,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MailModule } from 'src/mail/mail.module';
 import { AuthenticationGuard } from 'src/guards/authentication.guard';
 import { AuthorizationGuard } from 'src/guards/authorization.guard';
-import { LessonModule } from 'src/lesson/lesson.module';
+import { CloudinaryModule } from 'src/cloudinary/cloudinary.module';
 
 @Module({
   controllers: [AuthController],
@@ -28,7 +28,7 @@ import { LessonModule } from 'src/lesson/lesson.module';
         global: true
       }),
     }),
-    LessonModule,
+    CloudinaryModule,
     MailModule
   ],
   exports: [

@@ -1,5 +1,5 @@
 import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString } from "class-validator";
-import { QuestionType } from "generated/prisma/client";
+import { QuestionType } from "@prisma/client";
 
 export class CreateQuestionDto {
     @IsNotEmpty()

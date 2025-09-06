@@ -1,5 +1,5 @@
 import { IsEnum, IsNumber, IsOptional, IsString } from "class-validator";
-import { QuestionType } from "generated/prisma/client";
+import { QuestionType } from "@prisma/client";
 
 export class UpdateQuestionDto {
     @IsOptional()

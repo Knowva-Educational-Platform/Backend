@@ -21,7 +21,7 @@ import { UpdateQuestionDto } from './dto/update-question.dto';
 import { AuthenticationGuard } from '../guards/authentication.guard';
 import { AuthorizationGuard } from '../guards/authorization.guard';
 import { Roles } from '../decorator/decorator/roles.decorator';
-import { Role } from 'generated/prisma';
+import { Role } from '../decorator/enums/roles';
 
 @ApiTags('Quiz')
 @Controller('quiz')

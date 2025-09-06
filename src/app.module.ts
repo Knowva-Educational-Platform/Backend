@@ -11,6 +11,7 @@ import { EnrollmentModule } from './enrollment/enrollment.module';
 import { LessonModule } from './lesson/lesson.module';
 import { NotificationModule } from './notification/notification.module';
 import { ChatModule } from './chat/chat.module';
+import { CloudinaryModule } from './cloudinary/cloudinary.module';
 // import { GroupChatModule } from './group-chat/group-chat.module';
 
 
@@ -28,11 +29,12 @@ import config from './helper/config';
     MailModule,
     SubjectModule,
     GroupModule,
-    QuizModule
+    QuizModule,
     EnrollmentModule,
     LessonModule,
     NotificationModule,
     ChatModule,
+    CloudinaryModule,
 
   ],
   controllers: [AppController],

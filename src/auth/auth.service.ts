@@ -13,7 +13,7 @@ const otpGenerator = require('otp-generator')
 import { MailService } from 'src/mail/mail.service';
 import { IUser, LoginResponse, RegisterResponse, UpdateProfileResponse } from 'src/helper/interfaces/interfaces.response';
 import { UploadApiResponse } from 'cloudinary';
-import { CloudinaryService } from 'src/lesson/cloudinary.service';
+import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 @Injectable()
 export class AuthService {
   private googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -29,7 +29,7 @@ export class AuthService {
    * @param createAuthDto 
    * @returns RegisterResponse
    */
-  async create(createAuthDto: CreateAuthDto ,file: Express.Multer.File): Promise<RegisterResponse> {
+  async create(createAuthDto: CreateAuthDto, file: Express.Multer.File): Promise<RegisterResponse> {
     const useremail = await this.prisma.user.findUnique({
       where: {
         email: createAuthDto.email
@@ -42,7 +42,7 @@ export class AuthService {
       throw new BadRequestException('Password does not match');
     }
     const hashedPassword = await this.hashPassword(createAuthDto.password);
-    const result: UploadApiResponse = await this.cloudinaryService.uploadFile(file , 'usersAvatars');
+    const result: UploadApiResponse = await this.cloudinaryService.uploadFile(file, 'usersAvatars');
     let role: Role;
     if (createAuthDto.roleToken === this.configService.get<string>('TEACHER_TOKEN')) {
       role = Role.TEACHER;
@@ -57,7 +57,7 @@ export class AuthService {
         password: hashedPassword,
         name: createAuthDto.name,
         phone: createAuthDto.phoneNumber,
-        imageUrl: result.secure_url,
+        avatar: result.secure_url,
         publicId: result.public_id,
         bio: createAuthDto.bio,
         gender: createAuthDto.gender
@@ -172,7 +172,7 @@ export class AuthService {
    * @description Get user profile
    * @returns { id, name, email, role }
    */
-  async getProfile(id: number):Promise<IUser> {
+  async getProfile(id: number): Promise<IUser> {
     const user = await this.prisma.user.findUnique({
       where: {
         id: id
@@ -187,10 +187,10 @@ export class AuthService {
       email: user.email,
       role: user.role,
       phoneNumber: user.phone ?? '',
-      imageUrl: user.imageUrl ?? '',
+      avatar: user.avatar ?? '',
       bio: user.bio ?? '',
       createdAt: user.createdAt,
-      gender: user.gender
+      gender: user.gender ?? undefined
     };
   }
 
@@ -202,8 +202,8 @@ export class AuthService {
    * @returns UpdateProfileResponse
    */
 
-  async update(id: number, updateAuthDto: UpdateAuthDto , file: Express.Multer.File): Promise<IUser> {
- 
+  async update(id: number, updateAuthDto: UpdateAuthDto, file: Express.Multer.File): Promise<IUser> {
+
     const user = await this.prisma.user.findUnique({
       where: {
         id: id
@@ -217,12 +217,12 @@ export class AuthService {
       updatedData.password = await this.hashPassword(updateAuthDto.password);
     }
     if (file) {
-      const result = await this.cloudinaryService.uploadFile(file , 'usersAvatars');
+      const result = await this.cloudinaryService.uploadFile(file, 'usersAvatars');
       if (result) {
-        
-        updatedData = { ...updatedData, imageUrl: result.url };
+
+        updatedData = { ...updatedData, avatar: result.url };
       }
-      
+
     }
     const updatedUser = await this.prisma.user.update({
       where: {
@@ -237,10 +237,10 @@ export class AuthService {
       email: updatedUser.email,
       role: updatedUser.role,
       phoneNumber: updatedUser.phone ?? '',
-      imageUrl: updatedUser.imageUrl ?? '',
+      avatar: updatedUser.avatar ?? '',
       bio: updatedUser.bio ?? '',
       createdAt: updatedUser.createdAt,
-      gender: updatedUser.gender
+      gender: updatedUser.gender ?? undefined
     };
   }
 
@@ -267,7 +267,7 @@ export class AuthService {
         id: id
       }
     });
-    if  (user.publicId)
+    if (user.publicId)
       await this.cloudinaryService.deleteFile(user.publicId);
     return { message: 'User deleted successfully' };
   }

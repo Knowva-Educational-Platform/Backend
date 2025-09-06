@@ -3,7 +3,7 @@ import { PrismaService } from 'src/database/prisma.service';
 import { CreateQuizDto } from './dto/create-quiz.dto';
 import { UpdateQuizDto } from './dto/update-quiz.dto';
 import { CreateQuestionDto } from './dto/create-question.dto';
-import { QuestionMode, QuestionType } from 'generated/prisma';
+import { QuestionMode, QuestionType } from '@prisma/client';
 import { UpdateQuestionDto } from './dto/update-question.dto';
 import { validate } from 'class-validator';
 @Injectable()
