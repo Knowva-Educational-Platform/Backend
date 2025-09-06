@@ -118,6 +118,8 @@ model Group {
   Conversation Conversation[]
   Lesson       Lesson[]
   createdAt   DateTime  @default(now()) 
+
+  Quiz Quiz[]
 }
 
 

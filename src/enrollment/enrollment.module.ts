@@ -4,6 +4,8 @@ import { EnrollmentController } from './enrollment.controller';
 import { PrismaService } from 'src/database/prisma.service';
 import { NotificationModule } from 'src/notification/notification.module';
 import { GroupModule } from 'src/group/group.module';
+import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
   controllers: [EnrollmentController],
