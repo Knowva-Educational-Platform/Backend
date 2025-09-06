@@ -41,6 +41,9 @@ export class SubjectService {
 
 
   async findOne(id: number) : Promise<ISubject> {
+    if (!id) {
+      throw new BadRequestException('Subject not found');
+    }
     let subject = await this.prisma.subject.findFirst({
       where: {
         id 
