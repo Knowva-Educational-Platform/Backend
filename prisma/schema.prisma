@@ -75,20 +75,26 @@ model Subject {
   createdAt   DateTime  @default(now())  
 }
 
-model Group {
-  id         Int          @id @default(autoincrement())
-  name       String
-  capacity   Int
-  subject    Subject      @relation(fields: [subjectId], references: [id])
-  subjectId  Int
-  memberships Membership[]
-
-  createdBy User @relation(fields: [createdById] , references: [id])
-  createdById Int
-  Conversation Conversation[]
-
-  Lesson Lesson[]
+enum GroupStatus {
+  ACTIVE
+  COMPLETED
 }
+
+model Group {
+  id           Int          @id @default(autoincrement())
+  name         String
+  capacity     Int
+  status       GroupStatus  @default(ACTIVE)   // 👈 new status field
+  subject      Subject      @relation(fields: [subjectId], references: [id])
+  subjectId    Int
+  memberships  Membership[]
+  createdBy    User         @relation(fields: [createdById], references: [id])
+  createdById  Int
+  Conversation Conversation[]
+  Lesson       Lesson[]
+  createdAt   DateTime  @default(now()) 
+}
+
 
 model Membership {
   id        Int       @id @default(autoincrement())

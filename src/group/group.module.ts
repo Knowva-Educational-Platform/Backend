@@ -19,5 +19,6 @@ import { PrismaService } from 'src/database/prisma.service';
       inject: [ConfigService],
     }),
   ],
+  exports: [GroupService]
 })
 export class GroupModule { }
