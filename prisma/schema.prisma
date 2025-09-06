@@ -103,6 +103,7 @@ model Subject {
 enum GroupStatus {
   ACTIVE
   COMPLETED
+  INACTIVE
 }
 
 model Group {

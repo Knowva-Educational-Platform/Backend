@@ -54,7 +54,7 @@ export class GroupService {
     if (group.memberships.length >= group.capacity && group.status !== 'COMPLETED') {
       await this.prisma.group.update({
         where: { id: groupId },
-        data: { status: 'COMPLETED' },
+        data: { status: 'INACTIVE' },
       });
     }
   }
@@ -63,95 +63,98 @@ export class GroupService {
   async findAllBySubject(subjectId: number): Promise<IGroup[]> {
     let subject = await this.prisma.subject.findUnique({ where: { id: subjectId } });
     if (!subject) throw new BadRequestException("Subject not found");
+
     let groups = await this.prisma.group.findMany({
       where: { subjectId: subjectId },
       include: {
         memberships: {
           select: {
-            student: {
-              select: { id: true, name: true, email: true },
-            },
+            student: { select: { id: true, name: true, email: true } },
           },
           where: { status: 'APPROVED' },
         },
-        subject: {
-          select: {
-            id: true,
-            title: true,
-            description: true,
-
-          },
-        },
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-
+        subject: { select: { id: true, title: true, description: true } },
+        createdBy: { select: { id: true, name: true, email: true } },
       },
-
-
-
     });
-    return groups.map(
-      (group) => {
-        return {
-          id: group.id.toString(),
-          name: group.name,
-          teacherId: group.createdById.toString(),
-          subjectId: group.subject.id.toString(),
-          capacity: group.capacity.toString(),
-          studentIds: group.memberships.map(m => m.student.id.toString()),
-          status: group.status === 'COMPLETED' ? 'completed' : 'not',
-          createdAt: group.createdAt,
-        };
+
+    return groups.map((group) => {
+      let status: "complete" | "active" | "inactive";
+      switch (group.status) {
+        case 'COMPLETED':
+          status = 'complete';
+          break;
+        case 'INACTIVE':
+          status = 'inactive';
+          break;
+        default:
+          status = 'active';
       }
-    );
+
+      return {
+        id: group.id.toString(),
+        name: group.name,
+        teacherId: group.createdById.toString(),
+        subjectId: group.subject.id.toString(),
+        capacity: group.capacity.toString(),
+        studentIds: group.memberships.map((m) => m.student.id.toString()),
+        status,
+        createdAt: group.createdAt,
+      };
+    });
   }
+
 
   async findOne(id: number): Promise<IGroup> {
     let group = await this.prisma.group.findUnique({
-      where: { id: id }, include: {
+      where: { id },
+      include: {
         subject: {
           select: {
             id: true,
             title: true,
             description: true,
             teacher: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
+              select: { id: true, name: true, email: true },
             },
           },
         },
         memberships: {
           select: {
             id: true,
-            student: {
-              select: { id: true, name: true, email: true },
-            },
+            student: { select: { id: true, name: true, email: true } },
           },
           where: { status: 'APPROVED' },
         },
-      }
+      },
     });
+
     if (!group) throw new BadRequestException("Group not found");
+
+    let status: "complete" | "active" | "inactive";
+    switch (group.status) {
+      case "COMPLETED":
+        status = "complete";
+        break;
+      case "INACTIVE":
+        status = "inactive";
+        break;
+      default:
+        status = "active";
+    }
+
     return {
       id: group.id.toString(),
       name: group.name,
       teacherId: group.subject.teacher.id.toString(),
       subjectId: group.subject.id.toString(),
       capacity: group.capacity.toString(),
-      studentIds: group.memberships.map(m => m.student.id.toString()),
-      status: group.status === 'COMPLETED' ? 'completed' : 'not',
+      studentIds: group.memberships.map((m) => m.student.id.toString()),
+      status,
       createdAt: group.createdAt,
-
     };
   }
+
 
   async update(id: number, updateGroupDto: UpdateGroupDto, userId: number): Promise<Group> {
 

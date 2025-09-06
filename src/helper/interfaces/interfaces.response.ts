@@ -80,7 +80,7 @@ interface IGroup {
   subjectId: string;
   capacity: string;
   studentIds: string[];
-  status: "completed" | "not"; // restrict to enum-like values
+  status: "complete" | "active" | "inactive"; // restrict to enum-like values
   createdAt: Date;
 }
 
