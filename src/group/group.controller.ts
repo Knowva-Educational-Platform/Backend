@@ -34,6 +34,16 @@ export class GroupController {
     return this.groupService.findAllBySubject(+subjectId);
   }
 
+  @Get('all-by-teacher/:teacherId')
+  /**
+   * Retrieves all groups for the given teacher id
+   * @param teacherId the id of the teacher to find groups for
+   * @returns an array of group objects
+   */
+  findAllByTeacher(@Param('teacherId') teacherId: string) {
+    return this.groupService.findAllByTeacher(+teacherId);
+  }
+
   @Get('details/:id')
   /**
    * Retrieves a single group by its id

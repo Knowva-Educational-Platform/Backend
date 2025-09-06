@@ -22,7 +22,7 @@ export class GroupService {
     return group;
   }
 
-  async completeGroup(groupId: number, userId: number) : Promise<IGroup> {
+  async completeGroup(groupId: number, userId: number): Promise<IGroup> {
     const group = await this.prisma.group.findUnique({ where: { id: groupId } });
     if (!group) throw new BadRequestException("Group not found");
 
@@ -36,7 +36,7 @@ export class GroupService {
 
     let updatedGroup = await this.prisma.group.update({
       where: { id: groupId },
-      data: { status:  'COMPLETED' },
+      data: { status: 'COMPLETED' },
     });
 
     return {
@@ -115,6 +115,50 @@ export class GroupService {
     });
   }
 
+  async findAllByTeacher(teacherId: number): Promise<IGroup[]> {
+    
+
+    let groups = await this.prisma.group.findMany({
+      where: { 
+        createdById: teacherId
+       },
+      include: {
+        memberships: {
+          select: {
+            student: { select: { id: true, name: true, email: true } },
+          },
+          where: { status: 'APPROVED' },
+        },
+        subject: { select: { id: true, title: true, description: true } },
+        createdBy: { select: { id: true, name: true, email: true } },
+      },
+    });
+
+    return groups.map((group) => {
+      let status: "complete" | "active" | "inactive";
+      switch (group.status) {
+        case 'COMPLETED':
+          status = 'complete';
+          break;
+        case 'INACTIVE':
+          status = 'inactive';
+          break;
+        default:
+          status = 'active';
+      }
+
+      return {
+        id: group.id.toString(),
+        name: group.name,
+        teacherId: group.createdById.toString(),
+        subjectId: group.subject.id.toString(),
+        capacity: group.capacity.toString(),
+        studentIds: group.memberships.map((m) => m.student.id.toString()),
+        status,
+        createdAt: group.createdAt,
+      };
+    });
+  }
 
   async findOne(id: number): Promise<IGroup> {
     let group = await this.prisma.group.findUnique({
