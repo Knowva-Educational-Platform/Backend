@@ -29,7 +29,7 @@ export class AuthService {
    * @param createAuthDto 
    * @returns RegisterResponse
    */
-  async create(createAuthDto: CreateAuthDto, file: Express.Multer.File): Promise<RegisterResponse> {
+  async create(createAuthDto: CreateAuthDto, file?: Express.Multer.File): Promise<RegisterResponse> {
     const useremail = await this.prisma.user.findUnique({
       where: {
         email: createAuthDto.email
@@ -42,27 +42,46 @@ export class AuthService {
       throw new BadRequestException('Password does not match');
     }
     const hashedPassword = await this.hashPassword(createAuthDto.password);
-    const result: UploadApiResponse = await this.cloudinaryService.uploadFile(file, 'usersAvatars');
+
     let role: Role;
+    let userData;
     if (createAuthDto.roleToken === this.configService.get<string>('TEACHER_TOKEN')) {
       role = Role.TEACHER;
     } else {
 
       role = Role.STUDENT;
     }
-    const user = await this.prisma.user.create({
-      data: {
-        role: role,
-        email: createAuthDto.email,
-        password: hashedPassword,
-        name: createAuthDto.name,
-        phone: createAuthDto.phoneNumber,
-        avatar: result.secure_url,
-        publicId: result.public_id,
-        bio: createAuthDto.bio,
-        gender: createAuthDto.gender === 'male' ? 'MALE' : 'FEMALE'
-      }
-    });
+    if (!file) {
+      userData = {
+        data: {
+          role: role,
+          email: createAuthDto.email,
+          password: hashedPassword,
+          name: createAuthDto.name,
+          phone: createAuthDto.phoneNumber,
+          bio: createAuthDto.bio,
+          gender: createAuthDto.gender === 'male' ? 'MALE' : 'FEMALE'
+        }
+      };
+    } else {
+      const result: UploadApiResponse = await this.cloudinaryService.uploadFile(file, 'usersAvatars');
+      userData = {
+        data: {
+          role: role,
+          email: createAuthDto.email,
+          password: hashedPassword,
+          name: createAuthDto.name,
+          phone: createAuthDto.phoneNumber,
+          avatar: result.secure_url,
+          bio: createAuthDto.bio,
+          gender: createAuthDto.gender === 'male' ? 'MALE' : 'FEMALE',
+          publicId: result.public_id,
+
+        }
+      };
+    }
+
+    const user = await this.prisma.user.create(userData);
     const token = await this.generateJwt({ id: user.id, role: user.role });
 
     return {

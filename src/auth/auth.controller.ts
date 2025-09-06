@@ -29,7 +29,7 @@ export class AuthController {
    * @param createAuthDto 
    * @returns RegisterResponse
    */
-  create(@Body() createAuthDto: CreateAuthDto, @UploadedFile() file: Express.Multer.File) {
+  create(@Body() createAuthDto: CreateAuthDto, @UploadedFile() file?: Express.Multer.File) {
     return this.authService.create(createAuthDto , file);
   }
 
