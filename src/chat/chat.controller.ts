@@ -43,7 +43,7 @@ export class ChatController {
     // Group conversation (for students + teacher of the subject)
     @Post('group/:groupId')
     @Roles(Role.TEACHER)
-    @UseGuards(AuthenticationGuard, AuthorizationGuard)
+    @UseGuards(AuthorizationGuard)
     /**
      * Get or create group conversation for given group ID
      * @param groupId Group ID
