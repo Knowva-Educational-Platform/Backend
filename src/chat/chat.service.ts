@@ -50,7 +50,7 @@ export class ChatService {
     }
 
     let conversation = await this.prisma.conversation.findUnique({
-      where: { groupId },
+      where: { groupId , teacherId : userId },
     });
 
     if (!conversation) {
