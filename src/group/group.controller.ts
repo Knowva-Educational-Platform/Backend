@@ -92,7 +92,7 @@ export class GroupController {
    * @returns a message indicating the group was marked as completed successfully
    */
   complete(@Param('id') id: string, @Req() req: any) {
-    return this.groupService.completeGroup(+id, +req.user.id);
+    return this.groupService.toggleGroupStatus(+id, +req.user.id);
   }
 
 }

@@ -22,34 +22,66 @@ export class GroupService {
     return group;
   }
 
-  async completeGroup(groupId: number, userId: number): Promise<IGroup> {
-    const group = await this.prisma.group.findUnique({ where: { id: groupId } });
-    if (!group) throw new BadRequestException("Group not found");
+  async toggleGroupStatus(groupId: number, userId: number): Promise<IGroup> {
+  const group = await this.prisma.group.findUnique({
+    where: { id: groupId },
+    include: {
+      memberships: {
+        select: { student: { select: { id: true } } },
+        where: { status: 'APPROVED' },
+      },
+    },
+  });
 
-    if (group.createdById !== userId) {
-      throw new BadRequestException("Only the creator can complete this group");
-    }
+  if (!group) throw new BadRequestException("Group not found");
 
-    if (group.status === 'COMPLETED') {
-      throw new BadRequestException("Group already completed");
-    }
-
-    let updatedGroup = await this.prisma.group.update({
-      where: { id: groupId },
-      data: { status: 'COMPLETED' },
-    });
-
-    return {
-      id: updatedGroup.id.toString(),
-      name: updatedGroup.name,
-      teacherId: updatedGroup.createdById.toString(),
-      subjectId: updatedGroup.subjectId.toString(),
-      capacity: updatedGroup.capacity.toString(),
-      studentIds: [],
-      status: 'inactive',
-      createdAt: updatedGroup.createdAt
-    }
+  if (group.createdById !== userId) {
+    throw new BadRequestException("Only the creator can change this group status");
   }
+
+  if (group.status === 'COMPLETED') {
+    throw new BadRequestException("Cannot toggle a completed group");
+  }
+
+  // toggle status
+  const newStatus = group.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+
+  const updatedGroup = await this.prisma.group.update({
+    where: { id: groupId },
+    data: { status: newStatus },
+    include: {
+      memberships: {
+        select: { student: { select: { id: true } } },
+        where: { status: 'APPROVED' },
+      },
+    },
+  });
+
+  // map DB enum → API value
+  let status: "complete" | "active" | "inactive";
+  switch (updatedGroup.status) {
+    case "COMPLETED":
+      status = "complete";
+      break;
+    case "INACTIVE":
+      status = "inactive";
+      break;
+    default:
+      status = "active";
+  }
+
+  return {
+    id: updatedGroup.id.toString(),
+    name: updatedGroup.name,
+    teacherId: updatedGroup.createdById.toString(),
+    subjectId: updatedGroup.subjectId.toString(),
+    capacity: updatedGroup.capacity.toString(),
+    studentIds: updatedGroup.memberships.map(m => m.student.id.toString()),
+    status,
+    createdAt: updatedGroup.createdAt,
+  };
+}
+
 
   async checkAndUpdateStatus(groupId: number) {
     const group = await this.prisma.group.findUnique({
