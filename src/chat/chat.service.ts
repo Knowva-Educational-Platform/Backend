@@ -42,7 +42,7 @@ export class ChatService {
   }
 
   // Get or create group conversation
-  async getOrCreateGroupConversation(groupId: number) {
+  async getOrCreateGroupConversation(groupId: number , userId: number) {
     if (!groupId) throw new NotFoundException('Group not found');
     let group = await this.prisma.group.findUnique({ where: { id: groupId } });
     if (!group) {
@@ -57,7 +57,8 @@ export class ChatService {
       conversation = await this.prisma.conversation.create({
         data: {
           groupId,
-          isGroup: true // explicitly set as group conversation
+          isGroup: true, // explicitly set as group conversation
+          teacherId : userId
         },
       });
     }
@@ -85,8 +86,10 @@ export class ChatService {
                   status: 'APPROVED' // only approved memberships
                 }
               }
-            }
-          }
+            },
+
+          },
+
         ]
       },
       include: {
