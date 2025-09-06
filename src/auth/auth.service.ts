@@ -60,7 +60,7 @@ export class AuthService {
         avatar: result.secure_url,
         publicId: result.public_id,
         bio: createAuthDto.bio,
-        gender: createAuthDto.gender
+        gender: createAuthDto.gender === 'male' ? 'MALE' : 'FEMALE'
       }
     });
     const token = await this.generateJwt({ id: user.id, role: user.role });
