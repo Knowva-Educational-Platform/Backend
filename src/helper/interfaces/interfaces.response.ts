@@ -32,4 +32,77 @@ interface ProfileResponse {
   role: string;
 }
 
-export { LoginResponse, RegisterResponse, UpdateProfileResponse , ProfileResponse};
+
+interface IUser {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  phoneNumber?: string
+  imageUrl?: string
+  bio?: string
+  createdAt?: Date
+  gender: string
+}
+
+
+ interface IMessage {
+  id: string;
+  chatId: string;
+  senderId: string;
+  text: string;
+  timestamp: Date;
+  deliveredTo: string[];
+  readBy: string[];
+  mediaUrl?: string;
+  mediaType?: string;
+}
+ interface FlutterUser {
+  id: string;
+  name: string;
+  email: string;
+}
+
+ interface IChat {
+  id: string;
+  name: string;
+  isGroup: boolean;
+  users: FlutterUser[];
+  lastMessage: IMessage | null;
+}
+
+ interface IGroup {
+  id: string;
+  name: string;
+  teacherId: string;
+  subjectId: string;
+  capacity: string;
+  studentIds: string[];
+  status: "completed" | "not"; // restrict to enum-like values
+  createdAt: Date;
+}
+
+
+ interface ISubject {
+  id: string;
+  name: string;
+  description: string;
+  createdBy: FlutterUser;
+  createdAt: Date;
+}
+
+ interface IMaterial {
+  id: string;
+  name: string;
+  type: string; // restrict to specific values
+  groupId: string;
+  subjectId: string;
+  description: string;
+  fileUrl: string;
+  createdBy: FlutterUser;
+  createdAt: Date;
+}
+
+export { LoginResponse, RegisterResponse, UpdateProfileResponse , ProfileResponse,
+  IUser, IMessage, FlutterUser, IChat, IGroup, ISubject, IMaterial
+};

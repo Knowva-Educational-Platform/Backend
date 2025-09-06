@@ -8,6 +8,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MailModule } from 'src/mail/mail.module';
 import { AuthenticationGuard } from 'src/guards/authentication.guard';
 import { AuthorizationGuard } from 'src/guards/authorization.guard';
+import { LessonModule } from 'src/lesson/lesson.module';
 
 @Module({
   controllers: [AuthController],
@@ -23,10 +24,11 @@ import { AuthorizationGuard } from 'src/guards/authorization.guard';
       inject: [ConfigService],
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),
-        signOptions: { expiresIn: '1h' },
+        signOptions: { expiresIn: '1d' },
         global: true
       }),
     }),
+    LessonModule,
     MailModule
   ],
   exports: [

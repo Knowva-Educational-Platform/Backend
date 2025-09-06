@@ -7,6 +7,13 @@ import { MailModule } from './mail/mail.module';
 import { SubjectModule } from './subject/subject.module';
 import { GroupModule } from './group/group.module';
 import { QuizModule } from './quiz/quiz.module';
+import { EnrollmentModule } from './enrollment/enrollment.module';
+import { LessonModule } from './lesson/lesson.module';
+import { NotificationModule } from './notification/notification.module';
+import { ChatModule } from './chat/chat.module';
+// import { GroupChatModule } from './group-chat/group-chat.module';
+
+
 import config from './helper/config';
 @Module({
   imports: [AuthModule,
@@ -22,6 +29,11 @@ import config from './helper/config';
     SubjectModule,
     GroupModule,
     QuizModule
+    EnrollmentModule,
+    LessonModule,
+    NotificationModule,
+    ChatModule,
+
   ],
   controllers: [AppController],
   providers: [AppService],

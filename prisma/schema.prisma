@@ -6,7 +6,7 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
+  // output   = "../@prisma/client"
 }
 
 datasource db {
@@ -31,22 +31,37 @@ model User {
   email         String         @unique
   password      String
   role          Role
+  gender        Gender?
   avatar        String?
+  phone         String?
+  bio           String?
   subjects      Subject[]      @relation("TeacherSubjects")
   memberships   Membership[]
   messages      Message[]
   notifications Notification[]
   createdAt     DateTime       @default(now())
+  publicId      String?
 
   quizAttempts QuizAttempt[]
 
   OtpToken OtpToken[]
+  
+  ConversationStudent Conversation[] @relation("StudentConversations")
+
+  ConversationTeacher Conversation[] @relation("TeacherConversations")
+  
+  Group Group[]
 
   accounts Account[]
 
   createdQuizzes Quiz[]
 
   createdQuestions Question[]
+}
+
+enum Gender {
+  MALE
+  FEMALE
 }
 
 enum Role {
@@ -82,6 +97,7 @@ model Subject {
   lessons       Lesson[]
   quizzes       Quiz[]
   conversations Conversation[]
+  createdAt   DateTime  @default(now())  
 }
 
 model Group {
@@ -91,6 +107,13 @@ model Group {
   subject     Subject      @relation(fields: [subjectId], references: [id])
   subjectId   Int
   memberships Membership[]
+  createdBy   User @relation(fields: [createdById] , references: [id])
+  createdById Int
+  
+  Conversation Conversation[]
+
+  Lesson Lesson[]
+  
   quizzes     Quiz[]
 }
 
@@ -109,13 +132,20 @@ enum Status {
   REJECTED
 }
 
+
+
+
 model Lesson {
-  id        Int        @id @default(autoincrement())
-  type      LessonType
+  id        Int      @id @default(autoincrement())
+  type      String
   title     String
   url       String
-  subject   Subject    @relation(fields: [subjectId], references: [id])
+  publicId  String
+  createdAt DateTime @default(now())
+  subject   Subject  @relation(fields: [subjectId], references: [id])
   subjectId Int
+  group Group @relation(fields: [groupId] , references: [id])
+  groupId Int
 }
 
 enum LessonType {
@@ -123,6 +153,28 @@ enum LessonType {
   VIDEO
   DOC
 }
+
+// model GroupConversation {
+//   id        Int            @id @default(autoincrement())
+//   group     Group          @relation(fields: [groupId], references: [id])
+//   groupId   Int            @unique
+//   messages  GroupMessage[]
+//   createdAt DateTime       @default(now())
+// }
+
+// model GroupMessage {
+//   id              Int              @id @default(autoincrement())
+//   conversation    GroupConversation @relation(fields: [conversationId], references: [id])
+//   conversationId  Int
+//   sender          User             @relation(fields: [senderId], references: [id])
+//   senderId        Int
+//   content         String
+//   mediaUrl        String?
+//   mediaType       String?
+//   deliveredTo     String[]         @default([])
+//   readBy          String[]         @default([])
+//   createdAt       DateTime         @default(now())
+// }
 
 model Quiz {
   id              Int      @id @default(autoincrement())
@@ -198,10 +250,31 @@ model StudentAnswer {
 }
 
 model Conversation {
-  id        Int       @id @default(autoincrement())
-  subject   Subject   @relation(fields: [subjectId], references: [id])
-  subjectId Int
-  messages  Message[]
+  id          Int       @id @default(autoincrement())
+  isGroup     Boolean   @default(false) // determines if it's a group or direct chat
+  
+  // For direct conversations (isGroup = false)
+  student     User?     @relation("StudentConversations", fields: [studentId], references: [id])
+  studentId   Int?
+  teacher     User?     @relation("TeacherConversations", fields: [teacherId], references: [id])
+  teacherId   Int?
+  
+  // For group conversations (isGroup = true)
+  group       Group?    @relation(fields: [groupId], references: [id])
+  groupId     Int?      @unique
+  
+  // Common fields
+  messages    Message[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  subjects    Subject[]
+
+  // Constraints to ensure data integrity
+  @@unique([studentId, teacherId]) // ensure one conversation per student-teacher pair
+  
+  // Custom validation logic needed at application level:
+  // - If isGroup = false: studentId and teacherId must be set, groupId must be null
+  // - If isGroup = true: groupId must be set, studentId and teacherId must be null
 }
 
 model Message {
@@ -211,8 +284,21 @@ model Message {
   sender         User         @relation(fields: [senderId], references: [id])
   senderId       Int
   content        String
+  
+  // Enhanced fields for both direct and group messages
+  mediaUrl       String?      // for file attachments
+  mediaType      String?      // type of media (image, video, document, etc.)
+  
+  // For group messages - track delivery and read status
+  deliveredTo    String[]     @default([]) // array of user IDs who received the message
+  readBy         String[]     @default([]) // array of user IDs who read the message
+  
+  // Timestamps
   timestamp      DateTime     @default(now())
+  createdAt      DateTime     @default(now())
+  readAt         DateTime?    // for direct messages, single read timestamp
 }
+
 
 model Notification {
   id        Int      @id @default(autoincrement())
