@@ -40,7 +40,7 @@ interface IUser {
   name: string;
   email: string;
   role: string;
-  phoneNumber?: string
+  phone?: string
   avatar?: string
   bio?: string
   createdAt?: Date
