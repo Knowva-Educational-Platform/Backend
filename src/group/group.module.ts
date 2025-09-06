@@ -1,9 +1,8 @@
 import { Module } from '@nestjs/common';
 import { GroupService } from './group.service';
 import { GroupController } from './group.controller';
-import { JwtModule } from '@nestjs/jwt';
-import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PrismaService } from 'src/database/prisma.service';
+import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
   controllers: [GroupController],

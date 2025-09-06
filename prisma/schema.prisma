@@ -25,34 +25,43 @@ model OtpToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-
 model User {
-  id          Int       @id @default(autoincrement())
-  name        String
-  email       String    @unique
-  gender      String
-  phone       String?
-  password    String
-  imageUrl    String?
-  bio         String?
-  role        Role
-  subjects    Subject[] @relation("TeacherSubjects")
-  memberships Membership[]
-  messages    Message[]
+  id            Int            @id @default(autoincrement())
+  name          String
+  email         String         @unique
+  password      String
+  role          Role
+  gender        Gender?
+  avatar        String?
+  phone         String?
+  bio           String?
+  subjects      Subject[]      @relation("TeacherSubjects")
+  memberships   Membership[]
+  messages      Message[]
   notifications Notification[]
-  createdAt   DateTime  @default(now())
-  publicId  String?
-  StudentAnswer StudentAnswer[]
+  createdAt     DateTime       @default(now())
+  publicId      String?
+
+  quizAttempts QuizAttempt[]
 
   OtpToken OtpToken[]
-
+  
   ConversationStudent Conversation[] @relation("StudentConversations")
 
   ConversationTeacher Conversation[] @relation("TeacherConversations")
-
-
-
+  
   Group Group[]
+
+  accounts Account[]
+
+  createdQuizzes Quiz[]
+
+  createdQuestions Question[]
+}
+
+enum Gender {
+  MALE
+  FEMALE
 }
 
 enum Role {
@@ -60,17 +69,33 @@ enum Role {
   TEACHER
 }
 
+model Account {
+  userId            Int
+  provider          Provider
+  providerAccountId String
+  accessToken       String?
+  refreshToken      String?
+  expiresAt         DateTime?
+  user              User      @relation(fields: [userId], references: [id])
 
+  @@id([provider, userId]) // in case only one account per user
+  @@unique([provider, providerAccountId])
+}
+
+enum Provider {
+  GOOGLE
+  FACEBOOK
+}
 
 model Subject {
-  id       Int       @id @default(autoincrement())
-  title    String
-  description String?
-  teacher  User      @relation("TeacherSubjects", fields: [teacherId], references: [id])
-  teacherId Int
-  groups   Group[]
-  lessons  Lesson[]
-  quizzes  Quiz[]
+  id            Int            @id @default(autoincrement())
+  title         String
+  description   String?
+  teacher       User           @relation("TeacherSubjects", fields: [teacherId], references: [id])
+  teacherId     Int
+  groups        Group[]
+  lessons       Lesson[]
+  quizzes       Quiz[]
   conversations Conversation[]
   createdAt   DateTime  @default(now())  
 }
@@ -97,11 +122,11 @@ model Group {
 
 
 model Membership {
-  id        Int       @id @default(autoincrement())
-  status    Status    @default(PENDING)
-  student   User      @relation(fields: [studentId], references: [id])
+  id        Int    @id @default(autoincrement())
+  status    Status @default(PENDING)
+  student   User   @relation(fields: [studentId], references: [id])
   studentId Int
-  group     Group     @relation(fields: [groupId], references: [id])
+  group     Group  @relation(fields: [groupId], references: [id])
   groupId   Int
 }
 
@@ -156,40 +181,76 @@ enum LessonType {
 // }
 
 model Quiz {
-  id        Int        @id @default(autoincrement())
-  title     String
-  mode      QuizMode
-  status    String     @default("DRAFT")
-  subject   Subject    @relation(fields: [subjectId], references: [id])
-  subjectId Int
+  id              Int      @id @default(autoincrement())
+  title           String
+  status          String   @default("DRAFT")
+  subject         Subject  @relation(fields: [subjectId], references: [id])
+  subjectId       Int
+  group           Group    @relation(fields: [groupId], references: [id])
+  groupId         Int
+  createdBy       User     @relation(fields: [createdById], references: [id])
+  createdById     Int
+  startsAt        DateTime
+  endsAt          DateTime
+  isActive        Boolean  @default(false)
+  canChangeAnswer Boolean  @default(true)
+
   questions Question[]
+
+  attempts QuizAttempt[]
+
+  @@index([id, createdById])
 }
 
-enum QuizMode {
+model Question {
+  id          Int             @id @default(autoincrement())
+  question    String
+  type        QuestionType
+  options     String[]
+  answer      String
+  quiz        Quiz            @relation(fields: [quizId], references: [id])
+  quizId      Int
+  createdBy   User?           @relation(fields: [createdById], references: [id])
+  createdById Int?
+  mode        QuestionMode
+  score       Float
+  answers     StudentAnswer[]
+
+  @@index([id, createdById])
+}
+
+enum QuestionType {
+  MCQ
+  TrueFalse
+  Written
+}
+
+enum QuestionMode {
   MANUAL
   AI
 }
 
-model Question {
-  id        Int      @id @default(autoincrement())
-  text      String
-  type      String
-  options   String[]
-  answer    String
-  quiz      Quiz     @relation(fields: [quizId], references: [id])
-  quizId    Int
-  answers   StudentAnswer[]
+model QuizAttempt {
+  id             Int             @id @default(autoincrement())
+  quiz           Quiz            @relation(fields: [quizId], references: [id])
+  quizId         Int
+  student        User            @relation(fields: [studentId], references: [id])
+  studentId      Int
+  score          Float?
+  createdAt      DateTime        @default(now())
+  studentAnswers StudentAnswer[]
 }
 
 model StudentAnswer {
-  id         Int      @id @default(autoincrement())
-  student    User     @relation(fields: [studentId], references: [id])
-  studentId  Int
-  question   Question @relation(fields: [questionId], references: [id])
-  questionId Int
-  answer     String
-  correct    Boolean
-  score      Int
+  id            Int         @id @default(autoincrement())
+  question      Question    @relation(fields: [questionId], references: [id])
+  questionId    Int
+  quizAttempt   QuizAttempt @relation(fields: [quizAttemptId], references: [id])
+  quizAttemptId Int
+  answer        String
+  score         Float       @default(0)
+
+  @@unique([quizAttemptId, questionId])
 }
 
 model Conversation {

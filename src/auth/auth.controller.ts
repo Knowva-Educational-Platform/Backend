@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Req, UseGuards, Query, Logger, UploadedFile, UseInterceptors, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Delete, Req, UseGuards, Query, Logger, UploadedFile, UseInterceptors, BadRequestException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { CreateAuthDto } from './dto/create-auth.dto';
 import { UpdateAuthDto } from './dto/update-auth.dto';
@@ -110,5 +110,17 @@ export class AuthController {
    */
   remove(@Req() req: any) {
     return this.authService.remove(+req.user.id);
+  }
+
+  // ===== Google =====
+  @Post('google')
+  async googleLogin(@Body('idToken') idToken: string) {
+    return this.authService.loginWithGoogle(idToken);
+  }
+
+  // ===== Facebook =====
+  @Post('facebook')
+  async facebookLogin(@Body('accessToken') accessToken: string) {
+    return this.authService.loginWithFacebook(accessToken);
   }
 }

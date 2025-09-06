@@ -1,3 +1,5 @@
+import { Gender } from "@prisma/client";
+
 interface LoginResponse {
   token: string;
   user: {
@@ -39,14 +41,14 @@ interface IUser {
   email: string;
   role: string;
   phoneNumber?: string
-  imageUrl?: string
+  avatar?: string
   bio?: string
   createdAt?: Date
-  gender: string
+  gender?: Gender
 }
 
 
- interface IMessage {
+interface IMessage {
   id: string;
   chatId: string;
   senderId: string;
@@ -57,13 +59,13 @@ interface IUser {
   mediaUrl?: string;
   mediaType?: string;
 }
- interface FlutterUser {
+interface FlutterUser {
   id: string;
   name: string;
   email: string;
 }
 
- interface IChat {
+interface IChat {
   id: string;
   name: string;
   isGroup: boolean;
@@ -71,7 +73,7 @@ interface IUser {
   lastMessage: IMessage | null;
 }
 
- interface IGroup {
+interface IGroup {
   id: string;
   name: string;
   teacherId: string;
@@ -83,7 +85,7 @@ interface IUser {
 }
 
 
- interface ISubject {
+interface ISubject {
   id: string;
   name: string;
   description: string;
@@ -91,7 +93,7 @@ interface IUser {
   createdAt: Date;
 }
 
- interface IMaterial {
+interface IMaterial {
   id: string;
   name: string;
   type: string; // restrict to specific values
@@ -103,6 +105,7 @@ interface IUser {
   createdAt: Date;
 }
 
-export { LoginResponse, RegisterResponse, UpdateProfileResponse , ProfileResponse,
+export {
+  LoginResponse, RegisterResponse, UpdateProfileResponse, ProfileResponse,
   IUser, IMessage, FlutterUser, IChat, IGroup, ISubject, IMaterial
 };

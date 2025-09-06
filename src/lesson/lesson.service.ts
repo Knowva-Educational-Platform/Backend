@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateLessonDto } from './dto/create-lesson.dto';
 import { UpdateLessonDto } from './dto/update-lesson.dto';
-import { CloudinaryService } from './cloudinary.service';
+import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { UploadApiResponse } from 'cloudinary';
 import { PrismaService } from 'src/database/prisma.service';
 import { Lesson, LessonType } from '@prisma/client';
@@ -171,7 +171,7 @@ export class LessonService {
         }
       }
     });
-    if  (!lessons) {
+    if (!lessons) {
       throw new BadRequestException('Lessons not found');
     }
     return lessons.map((lesson) => ({
