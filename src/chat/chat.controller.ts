@@ -44,9 +44,11 @@ export class ChatController {
     @Post('group/:groupId')
     @Roles(Role.TEACHER)
     @UseGuards(AuthorizationGuard)
+    
     /**
-     * Get or create group conversation for given group ID
-     * @param groupId Group ID
+     * Get or create group conversation for a given subject ID
+     * @param req Express request
+     * @param groupId ID of the subject
      * @returns Conversation object
      */
     async getOrCreateGroupConversation(
