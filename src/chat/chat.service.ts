@@ -105,7 +105,7 @@ export class ChatService {
           select: {
             id: true,
             name: true,
-            capacity: true,
+            
             subject: {
               select: { id: true, title: true, description: true }
             },
