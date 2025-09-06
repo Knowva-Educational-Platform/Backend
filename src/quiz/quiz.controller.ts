@@ -127,9 +127,10 @@ export class QuizController {
     @ApiResponse({ status: 404, description: 'Quiz or question not found' })
     async addOldQuestionToQuiz(
         @Param('quizId', ParseIntPipe) quizId: number,
-        @Param('questionId', ParseIntPipe) questionId: number
+        @Param('questionId', ParseIntPipe) questionId: number,
+        @Request() req
     ) {
-        return this.quizService.addOldQuestionToQuiz(quizId, questionId);
+        return await this.quizService.addOldQuestionToQuiz(req.user.id, quizId, questionId);
     }
 
     @Post('questions/:id/duplicate')

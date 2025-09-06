@@ -66,15 +66,19 @@ export class QuizService {
         return this.prisma.question.findUnique({ where: { id, createdById: userId } });
     }
 
-    async addOldQuestionToQuiz(quizId: number, questionId: number) {
-        return this.prisma.quiz.update({
-            where: { id: quizId },
-            data: {
-                questions: {
-                    connect: { id: questionId }
-                }
+    async addOldQuestionToQuiz(userId: number, quizId: number, questionId: number) {
+        const question = await this.prisma.question.findUnique({
+            where: {
+                id: questionId,
+                createdById: userId
             }
         });
+
+        if (!question) {
+            throw new InternalServerErrorException('Question not found');
+        }
+
+        return await this.prisma.question.create({ data: { ...question, createdById: userId, quizId } });
     }
 
     private validateQuestionOptions(question: any) {
