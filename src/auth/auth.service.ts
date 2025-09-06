@@ -1,11 +1,13 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { CreateAuthDto } from './dto/create-auth.dto';
 import { UpdateAuthDto } from './dto/update-auth.dto';
 import { PrismaService } from 'src/database/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { Role, User } from '@prisma/client';
+import { OAuth2Client } from 'google-auth-library';
+import axios from 'axios';
+import { Role, User, Provider } from '@prisma/client';
 import { LoginDto } from './dto/login.dto';
 const otpGenerator = require('otp-generator')
 import { MailService } from 'src/mail/mail.service';
@@ -14,6 +16,7 @@ import { UploadApiResponse } from 'cloudinary';
 import { CloudinaryService } from 'src/lesson/cloudinary.service';
 @Injectable()
 export class AuthService {
+  private googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
   constructor(private prisma: PrismaService, private jwtService: JwtService, private configService: ConfigService,
     private readonly mailService: MailService,
@@ -280,7 +283,7 @@ export class AuthService {
     return isMatch;
   }
 
-  async generateJwt(payload: any): Promise<string> {
+  async generateJwt(payload: { id: number, role: Role }): Promise<string> {
     let token = await this.jwtService.signAsync(payload, {
       secret: process.env.JWT_SECRET
     });
@@ -291,5 +294,92 @@ export class AuthService {
     const otp = Math.floor(1000 + Math.random() * 9000).toString();
     console.log(otp); // e.g., "5732"
     return otp;
+  }
+
+  async loginWithGoogle(idToken: string) {
+    try {
+      const ticket = await this.googleClient.verifyIdToken({
+        idToken,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+      const payload = ticket.getPayload();
+      if (!payload?.email || !payload?.name) throw new UnauthorizedException();
+
+      return this.findOrCreateUser({
+        provider: Provider.GOOGLE,
+        providerAccountId: payload.sub,
+        email: payload.email,
+        name: payload.name,
+        avatar: payload.picture,
+      });
+    } catch (error) {
+      throw new UnauthorizedException("Invalid Google authentication request");
+    }
+  }
+
+  async loginWithFacebook(accessToken: string) {
+    try {
+      const { data } = await axios.get(
+        `https://graph.facebook.com/me?fields=id,name,email,picture&access_token=${accessToken}`,
+      );
+      if (!data?.email || !data?.name) throw new UnauthorizedException();
+
+      return this.findOrCreateUser({
+        provider: Provider.FACEBOOK,
+        providerAccountId: data.id,
+        email: data.email,
+        name: data.name,
+        avatar: data.picture?.data?.url,
+      });
+    } catch (error) {
+      throw new UnauthorizedException("Invalid Facebook authentication request");
+    }
+  }
+
+  private async findOrCreateUser(info: {
+    provider: Provider;
+    providerAccountId: string;
+    email: string;
+    name: string;
+    avatar?: string;
+  }) {
+    let user = await this.prisma.user.findUnique({ where: { email: info.email } });
+
+    if (!user) {
+      user = await this.prisma.user.create({
+        data: {
+          email: info.email,
+          name: info.name,
+          avatar: info.avatar,
+          password: '', // not used for OAuth users
+          role: Role.STUDENT, // default role
+          accounts: {
+            create: {
+              provider: info.provider as Provider,
+              providerAccountId: info.providerAccountId,
+            },
+          },
+        },
+      });
+    } else {
+      // ensure account relation exists
+      await this.prisma.account.upsert({
+        where: {
+          provider_providerAccountId: {
+            provider: info.provider,
+            providerAccountId: info.providerAccountId,
+          },
+        },
+        update: {},
+        create: {
+          provider: info.provider,
+          providerAccountId: info.providerAccountId,
+          userId: user.id,
+        },
+      });
+    }
+
+    const token = this.jwtService.sign({ id: user.id, role: user.role });
+    return { user, token };
   }
 }
