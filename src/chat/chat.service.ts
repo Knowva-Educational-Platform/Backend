@@ -89,6 +89,10 @@ export class ChatService {
             },
 
           },
+          {
+            isGroup: true,
+            teacherId : userId
+          }
 
         ]
       },
