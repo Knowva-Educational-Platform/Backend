@@ -22,7 +22,7 @@ export class GroupService {
     return group;
   }
 
-  async completeGroup(groupId: number, userId: number) {
+  async completeGroup(groupId: number, userId: number) : Promise<IGroup> {
     const group = await this.prisma.group.findUnique({ where: { id: groupId } });
     if (!group) throw new BadRequestException("Group not found");
 
@@ -34,10 +34,21 @@ export class GroupService {
       throw new BadRequestException("Group already completed");
     }
 
-    return this.prisma.group.update({
+    let updatedGroup = await this.prisma.group.update({
       where: { id: groupId },
-      data: { status: 'COMPLETED' },
+      data: { status:  'COMPLETED' },
     });
+
+    return {
+      id: updatedGroup.id.toString(),
+      name: updatedGroup.name,
+      teacherId: updatedGroup.createdById.toString(),
+      subjectId: updatedGroup.subjectId.toString(),
+      capacity: updatedGroup.capacity.toString(),
+      studentIds: [],
+      status: 'inactive',
+      createdAt: updatedGroup.createdAt
+    }
   }
 
   async checkAndUpdateStatus(groupId: number) {
