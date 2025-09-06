@@ -5,6 +5,7 @@ import { UpdateQuizDto } from './dto/update-quiz.dto';
 import { CreateQuestionDto } from './dto/create-question.dto';
 import { QuestionMode, QuestionType } from 'generated/prisma';
 import { UpdateQuestionDto } from './dto/update-question.dto';
+import { validate } from 'class-validator';
 @Injectable()
 export class QuizService {
     constructor(private prisma: PrismaService) { }
@@ -108,6 +109,11 @@ export class QuizService {
         const questionDtos: CreateQuestionDto[] = [];
 
         for (const questionDto of questionDtos) {
+            const errors = await validate(questionDto);
+            if (errors.length > 0) {
+                throw new InternalServerErrorException('Invalid question data');
+            }
+
             this.validateQuestionOptions(questionDto);
             await this.prisma.question.create({ data: { ...questionDto, createdById: userId, quizId, mode: QuestionMode.AI } });
         }
