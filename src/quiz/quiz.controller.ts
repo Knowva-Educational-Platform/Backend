@@ -133,6 +133,33 @@ export class QuizController {
         return await this.quizService.addOldQuestionToQuiz(req.user.id, quizId, questionId);
     }
 
+    @Post(':quizId/questions/ai')
+    @Roles(Role.TEACHER)
+    @ApiOperation({ summary: 'Add AI-generated questions to a quiz' })
+    @ApiParam({ name: 'quizId', description: 'Quiz ID' })
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                questions: {
+                    type: 'array',
+                    items: { $ref: '#/components/schemas/CreateQuestionDto' }
+                }
+            },
+            required: ['questions']
+        }
+    })
+    @ApiResponse({ status: 201, description: 'AI questions added to quiz successfully' })
+    @ApiResponse({ status: 400, description: 'Invalid input data' })
+    @ApiResponse({ status: 404, description: 'Quiz not found' })
+    async addAiQuestionsToQuiz(
+        @Param('quizId', ParseIntPipe) quizId: number,
+        @Body() body: { noOfQuestions: number },
+        @Request() req
+    ) {
+        return this.quizService.addAiQuestionsToQuiz(req.user.id, quizId, body.noOfQuestions);
+    }
+
     @Post('questions/:id/duplicate')
     @Roles(Role.TEACHER)
     @ApiOperation({ summary: 'Duplicate a question' })

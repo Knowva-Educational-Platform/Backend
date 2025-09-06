@@ -101,6 +101,18 @@ export class QuizService {
         });
     }
 
+    async addAiQuestionsToQuiz(userId: number, quizId: number, noOfQuestions: number) {
+        // TODO: fetch questions from proccess.env.KNOWVA_AI_API using axios asking for <noOfQuestions> Ai generated questions
+        // and the response should be { questions: CreateQuestionDto[] }
+        // validate each dto and its options then add them to the database
+        const questionDtos: CreateQuestionDto[] = [];
+
+        for (const questionDto of questionDtos) {
+            this.validateQuestionOptions(questionDto);
+            await this.prisma.question.create({ data: { ...questionDto, createdById: userId, quizId, mode: QuestionMode.AI } });
+        }
+    }
+
     async duplicateQuestion(userId: number, questionId: number) {
         const question = await this.prisma.question.findUnique({
             where: {
