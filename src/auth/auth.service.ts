@@ -142,7 +142,8 @@ export class AuthService {
       }
     });
 
-    await this.mailService.sendEmail({
+    // fire-and-forget email sending to avoid blocking the response if SMTP is slow
+    this.mailService.sendEmail({
       to: email,
       subject: 'Password Reset OTP',
       template: 'forgot-password', // match the template filename without .hbs
@@ -151,7 +152,7 @@ export class AuthService {
         otp,
         year: new Date().getFullYear(),
       },
-    });
+    }).catch(() => {});
 
     return { message: 'OTP sent to your email' };
 
