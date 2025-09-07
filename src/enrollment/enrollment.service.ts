@@ -2,7 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateEnrollmentDto } from './dto/create-enrollment.dto';
 import { UpdateEnrollmentDto } from './dto/update-enrollment.dto';
 import { PrismaService } from 'src/database/prisma.service';
-import { Membership, Status } from '@prisma/client';
+import { Membership, NotificationType, Status } from '@prisma/client';
 import { NotificationService } from 'src/notification/notification.service';
 import { NotificationGateway } from 'src/notification/notification.gateway';
 import { GroupService } from 'src/group/group.service';
@@ -62,6 +62,7 @@ export class EnrollmentService {
     await this.notificationService.create(
       enrollment.group.createdBy.id,
       `You have a new enrollment request in group ${enrollment.group.name}`,
+       NotificationType.GROUP_JOINED
     );
     this.notificationGateway.sendNotification(
       enrollment.group.createdBy.id.toString(),
@@ -128,7 +129,7 @@ export class EnrollmentService {
       }
     });
 
-    await this.notificationService.create(enrollment.studentId, `Your enrollment in group ${enrollment.groupId} has been approved.`);
+    await this.notificationService.create(enrollment.studentId, `Your enrollment in group ${enrollment.groupId} has been approved.`, NotificationType.GROUP_JOINED);
     this.notificationGateway.sendNotification(enrollment.studentId.toString(), `Your enrollment in group ${enrollment.groupId} has been approved.`);
     return updatedEnrollment;
   }
@@ -149,7 +150,7 @@ export class EnrollmentService {
         status: Status.REJECTED
       }
     });
-    await this.notificationService.create(enrollment.studentId, `Your enrollment in group ${enrollment.groupId} has been rejected.`);
+    await this.notificationService.create(enrollment.studentId, `Your enrollment in group ${enrollment.groupId} has been rejected. `, NotificationType.GROUP_JOINED);
     this.notificationGateway.sendNotification(enrollment.studentId.toString(), `Your enrollment in group ${enrollment.groupId} has been rejected.`);
     return updatedEnrollment;
   }

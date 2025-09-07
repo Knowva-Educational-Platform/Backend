@@ -39,7 +39,7 @@ export class LessonController {
    * @returns The created lesson object
    */
   create(@UploadedFile() file: Express.Multer.File, @Query('subjectId') subjectId: string ,@Query('groupIds') groupIds: string,@Body() CreateLessonDto : CreateLessonDto , @Req() req: any) {
-    
+
     const groupIdArray = groupIds.split(',').map(id => +id.trim()).filter(id => !isNaN(id));
     return this.lessonService.create(file , CreateLessonDto , +subjectId , groupIdArray , req.user.id);
   }
@@ -86,33 +86,33 @@ export class LessonController {
     return this.lessonService.remove(+id);
   }
 
-  @Post('add-to-any-group')
-  @Roles(Role.TEACHER)
-  @UseGuards(AuthenticationGuard,AuthorizationGuard)
-  @UseInterceptors(
-    FileInterceptor('file'  , {
-      storage: memoryStorage(),
+  // @Post('add-to-any-group')
+  // @Roles(Role.TEACHER)
+  // @UseGuards(AuthenticationGuard,AuthorizationGuard)
+  // @UseInterceptors(
+  //   FileInterceptor('file'  , {
+  //     storage: memoryStorage(),
 
-      fileFilter: (req, file, cb) => {
-        if (!file) {
-          return cb(new BadRequestException('File is required'), false);
-        }
-        cb(null, true);
-      }
-    }),
-  )
-  /**
-   * Adds a lesson to any groups (not necessarily owned by the teacher)
-   * @param file The file to upload to the lesson
-   * @param subjectId The id of the subject that this lesson belongs to
-   * @param groupIds Comma-separated list of group IDs that this lesson belongs to
-   * @param CreateLessonDto The lesson data to create
-   * @returns The created lesson object
-   */
-  addLessonToAnyGroup(@UploadedFile() file: Express.Multer.File, @Query('subjectId') subjectId: string ,@Query('groupIds') groupIds: string,@Body() CreateLessonDto : CreateLessonDto , @Req() req: any) {
-    const groupIdArray = groupIds.split(',').map(id => +id.trim()).filter(id => !isNaN(id));
-    return this.lessonService.addLessonToAnyGroup(file , CreateLessonDto , +subjectId , groupIdArray , req.user.id);
-  }
+  //     fileFilter: (req, file, cb) => {
+  //       if (!file) {
+  //         return cb(new BadRequestException('File is required'), false);
+  //       }
+  //       cb(null, true);
+  //     }
+  //   }),
+  // )
+  // /**
+  //  * Adds a lesson to any groups (not necessarily owned by the teacher)
+  //  * @param file The file to upload to the lesson
+  //  * @param subjectId The id of the subject that this lesson belongs to
+  //  * @param groupIds Comma-separated list of group IDs that this lesson belongs to
+  //  * @param CreateLessonDto The lesson data to create
+  //  * @returns The created lesson object
+  //  */
+  // addLessonToAnyGroup(@UploadedFile() file: Express.Multer.File, @Query('subjectId') subjectId: string ,@Query('groupIds') groupIds: string,@Body() CreateLessonDto : CreateLessonDto , @Req() req: any) {
+  //   const groupIdArray = groupIds.split(',').map(id => +id.trim()).filter(id => !isNaN(id));
+  //   return this.lessonService.addLessonToAnyGroup(file , CreateLessonDto , +subjectId , groupIdArray , req.user.id);
+  // }
 
   @Get('for-group/:groupId')
   /**
