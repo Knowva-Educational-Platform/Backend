@@ -117,7 +117,7 @@ model Group {
   createdBy    User         @relation(fields: [createdById], references: [id])
   createdById  Int
   Conversation Conversation[]
-  Lesson       Lesson[]
+  lessons      LessonGroup[]
   createdAt   DateTime  @default(now()) 
 
   Quiz Quiz[]
@@ -151,8 +151,18 @@ model Lesson {
   createdAt DateTime @default(now())
   subject   Subject  @relation(fields: [subjectId], references: [id])
   subjectId Int
-  group Group @relation(fields: [groupId] , references: [id])
-  groupId Int
+  groups    LessonGroup[]
+}
+
+model LessonGroup {
+  id        Int     @id @default(autoincrement())
+  lesson    Lesson  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lessonId  Int
+  group     Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  groupId   Int
+  createdAt DateTime @default(now())
+
+  @@unique([lessonId, groupId])
 }
 
 enum LessonType {
@@ -307,11 +317,22 @@ model Message {
 }
 
 
+enum NotificationType {
+  LESSON_ADDED
+  GROUP_JOINED
+  GROUP_LEFT
+  QUIZ_ASSIGNED
+  QUIZ_COMPLETED
+  MESSAGE_RECEIVED
+  GENERAL
+}
+
 model Notification {
-  id        Int      @id @default(autoincrement())
-  user      User     @relation(fields: [userId], references: [id])
+  id        Int              @id @default(autoincrement())
+  user      User             @relation(fields: [userId], references: [id])
   userId    Int
   message   String
-  read      Boolean  @default(false)
-  createdAt DateTime @default(now())
+  type      NotificationType @default(GENERAL)
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
 }

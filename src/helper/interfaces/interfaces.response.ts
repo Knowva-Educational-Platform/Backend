@@ -97,7 +97,7 @@ interface IMaterial {
   id: string;
   name: string;
   type: string; // restrict to specific values
-  groupId: string;
+  groups: Array<{ id: string; name: string }>;
   subjectId: string;
   description: string;
   fileUrl: string;
