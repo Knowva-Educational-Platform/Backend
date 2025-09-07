@@ -1,14 +1,19 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from 'src/database/prisma.service';
 import { CreateQuizDto } from './dto/create-quiz.dto';
 import { UpdateQuizDto } from './dto/update-quiz.dto';
 import { CreateQuestionDto } from './dto/create-question.dto';
-import { QuestionMode, QuestionType } from '@prisma/client';
+import { QuestionMode, QuestionType, NotificationType } from '@prisma/client';
 import { UpdateQuestionDto } from './dto/update-question.dto';
 import { validate } from 'class-validator';
+import { NotificationService } from 'src/notification/notification.service';
+import { NotificationGateway } from 'src/notification/notification.gateway';
+
 @Injectable()
 export class QuizService {
-    constructor(private prisma: PrismaService) { }
+    constructor(private prisma: PrismaService, private notifications: NotificationService,
+        private readonly notificationGateway: NotificationGateway
+    ) { }
 
     async getQuizes(userId: number) {
         return this.prisma.quiz.findMany({ where: { createdById: userId } });
@@ -22,11 +27,21 @@ export class QuizService {
     }
 
     async createQuiz(userId: number, createQuizDto: CreateQuizDto) {
-        return this.prisma.quiz.create({ data: { ...createQuizDto, createdById: userId } });
+        if (new Date(createQuizDto.endsAt) <= new Date(createQuizDto.startsAt)) {
+            throw new BadRequestException('endsAt must be after startsAt');
+        }
+        const quiz = await this.prisma.quiz.create({ data: { ...createQuizDto, createdById: userId } });
+        const members = await this.prisma.membership.findMany({ where: { groupId: quiz.groupId, status: 'APPROVED' }, select: { studentId: true } });
+        for (const m of members) {
+            await this.notifications.create(m.studentId, `New quiz: ${quiz.title} starts at ${quiz.startsAt.toISOString()}`, NotificationType.QUIZ_ASSIGNED);
+            this.notificationGateway.sendNotification(m.studentId.toString(), `New quiz: ${quiz.title} starts at ${quiz.startsAt.toISOString()}`);
+        }
+        return quiz;
     }
 
     async updateQuiz(id: number, userId: number, updateQuizDto: UpdateQuizDto) {
-        return this.prisma.quiz.update({ where: { id, createdById: userId }, data: updateQuizDto });
+        const quiz = await this.prisma.quiz.update({ where: { id, createdById: userId }, data: updateQuizDto });
+        return quiz;
     }
 
     async duplicateQuiz(id: number, userId: number) {
@@ -117,6 +132,17 @@ export class QuizService {
             this.validateQuestionOptions(questionDto);
             await this.prisma.question.create({ data: { ...questionDto, createdById: userId, quizId, mode: QuestionMode.AI } });
         }
+        return { count: questionDtos.length };
+    }
+
+    async saveAiQuestions(userId: number, quizId: number, questions: CreateQuestionDto[]) {
+        const quiz = await this.prisma.quiz.findUnique({ where: { id: quizId, createdById: userId } });
+        if (!quiz) throw new BadRequestException('Quiz not found');
+        for (const q of questions) {
+            this.validateQuestionOptions(q);
+            await this.prisma.question.create({ data: { ...q, createdById: userId, quizId, mode: QuestionMode.AI } });
+        }
+        return { count: questions.length };
     }
 
     async duplicateQuestion(userId: number, questionId: number) {
@@ -161,12 +187,15 @@ export class QuizService {
     }
 
     async startQuizAttempt(userId: number, quizId: number) {
-        return this.prisma.quiz.update({
-            where: { id: quizId, createdById: userId, startsAt: { lte: new Date() }, endsAt: { gt: new Date() } },
-            data: {
-                attempts: { create: { studentId: userId } }
-            }
-        });
+        const quiz = await this.prisma.quiz.findUnique({ where: { id: quizId } });
+        if (!quiz) throw new BadRequestException('Quiz not found');
+        if (quiz.startsAt > new Date() || quiz.endsAt <= new Date()) {
+            throw new BadRequestException('Quiz is not available');
+        }
+        const attempt = await this.prisma.quizAttempt.create({ data: { quizId, studentId: userId } });
+        await this.notifications.create(quiz.createdById, `Student ${userId} started quiz: ${quiz.title}`, NotificationType.QUIZ_ASSIGNED);
+        this.notificationGateway.sendNotification(quiz.createdById.toString(), `Student ${userId} started quiz: ${quiz.title}`);
+        return attempt;
     }
 
     async addQuestionAnswer(quizAttemptId: number, questionId: number, answer: string) {
@@ -189,5 +218,21 @@ export class QuizService {
             },
             data: { answer }
         });
+    }
+
+    async finishQuizAttempt(userId: number, quizAttemptId: number) {
+        const attempt = await this.prisma.quizAttempt.findUnique({ where: { id: quizAttemptId }, include: { quiz: true, studentAnswers: { include: { question: true } } } });
+        if (!attempt || attempt.studentId !== userId) throw new BadRequestException('Attempt not found');
+        let score = 0;
+        let total = 0;
+        for (const ans of attempt.studentAnswers as any[]) {
+            total += ans.question.score;
+            if (ans.question.type === 'Written') continue;
+            if (ans.answer === ans.question.answer) score += ans.question.score;
+        }
+        await this.prisma.quizAttempt.update({ where: { id: quizAttemptId }, data: { score } });
+        await this.notifications.create(userId, `Your results for quiz "${attempt.quiz.title}": ${score}/${total}`, NotificationType.QUIZ_COMPLETED);
+        this.notificationGateway.sendNotification(userId.toString(), `Your results for quiz "${attempt.quiz.title}": ${score}/${total}`);
+        return { score, total };
     }
 }
