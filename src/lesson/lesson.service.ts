@@ -35,7 +35,7 @@ export class LessonService {
       }
     });
     if (!subject) {
-      throw new BadRequestException('Subject not found');
+      throw new BadRequestException('Subject not found or not owned by teacher');
     }
     
     // Verify all groups exist
