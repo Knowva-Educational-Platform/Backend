@@ -1,6 +1,7 @@
-import { Controller, Delete, Get, Param, Put, Req, UseGuards } from '@nestjs/common';
+import { Controller, Delete, Get, Param, Put, Req, UseGuards, Query } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { AuthenticationGuard } from 'src/guards/authentication.guard';
+import { NotificationType } from '@prisma/client';
 
 @Controller('notification')
 @UseGuards(AuthenticationGuard)
@@ -25,5 +26,15 @@ export class NotificationController {
     @Delete('delete-all')
     async deleteAll(@Req() req : any) {
         return this.notificationService.deleteAll(+req.user.id);
+    }
+
+    @Get('by-type')
+    async getNotificationsByType(@Req() req: any, @Query('type') type: NotificationType) {
+        return this.notificationService.getNotificationsByType(+req.user.id, type);
+    }
+
+    @Get('unread-count-by-type')
+    async getUnreadCountByType(@Req() req: any, @Query('type') type: NotificationType) {
+        return this.notificationService.getUnreadCountByType(+req.user.id, type);
     }
 }

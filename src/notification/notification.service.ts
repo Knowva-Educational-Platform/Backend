@@ -2,16 +2,17 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { UpdateNotificationDto } from './dto/update-notification.dto';
 import { PrismaService } from 'src/database/prisma.service';
-import { Notification } from '@prisma/client';
+import { Notification, NotificationType } from '@prisma/client';
 
 @Injectable()
 export class NotificationService {
   constructor(private prisma: PrismaService) { }
-  async create(useId: number, message: string) : Promise<Notification> {
+  async create(useId: number, message: string, type: NotificationType = NotificationType.GENERAL) : Promise<Notification> {
     let notification = await this.prisma.notification.create({
       data: {
         userId: useId,
-        message: message
+        message: message,
+        type: type
       }
     });
     return notification;
@@ -68,6 +69,32 @@ export class NotificationService {
       }
     });
     
+  }
+
+  async getNotificationsByType(userId: number, type: NotificationType) : Promise<Notification[]> {
+    let notifications = await this.prisma.notification.findMany({
+      where: {
+        userId: userId,
+        type: type
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+    return notifications;
+  }
+
+  async getUnreadCountByType(userId: number, type: NotificationType) : Promise<{ count: number }> {
+    let count = await this.prisma.notification.count({
+      where: {
+        userId: userId,
+        read: false,
+        type: type
+      },
+    });
+    return {
+      count: count
+    };
   }
 }
 
