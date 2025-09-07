@@ -60,6 +60,15 @@ export class NotificationService {
       count: count
     };
   }
+
+  async deleteAll(userId: number) : Promise<void> {
+    await this.prisma.notification.deleteMany({
+      where: {
+        userId: userId
+      }
+    });
+    
+  }
 }
 
 
