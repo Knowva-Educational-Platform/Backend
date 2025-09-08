@@ -218,7 +218,7 @@ export class AuthService {
       avatar: user.avatar ?? '',
       bio: user.bio ?? '',
       createdAt: user.createdAt,
-      gender: user.gender ?? undefined
+      gender: user.gender ?? '',
     };
   }
 
@@ -230,47 +230,46 @@ export class AuthService {
    * @returns UpdateProfileResponse
    */
 
-  async update(id: number, updateAuthDto: UpdateAuthDto, file: Express.Multer.File): Promise<IUser> {
+  async update(
+  id: number,
+  updateAuthDto: UpdateAuthDto,
+  file?: Express.Multer.File
+): Promise<IUser> {
+  const user = await this.prisma.user.findUnique({ where: { id } });
+  if (!user) throw new NotFoundException('User not found');
 
-    const user = await this.prisma.user.findUnique({
-      where: {
-        id: id
-      }
-    });
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-    let updatedData: Partial<User> = { ...updateAuthDto };
-    if (updateAuthDto.password) {
-      updatedData.password = await this.hashPassword(updateAuthDto.password);
-    }
-    if (file) {
-      const result = await this.cloudinaryService.uploadFile(file, 'usersAvatars');
-      if (result) {
+  // start with DTO values
+  let updatedData: any = { ...updateAuthDto };
 
-        updatedData = { ...updatedData, avatar: result.url };
-      }
-
-    }
-    const updatedUser = await this.prisma.user.update({
-      where: {
-        id: id
-      },
-      data: updatedData
-    });
-    // const token = await this.generateJwt({ id: updatedUser.id, role: updatedUser.role });
-    return {
-      id: updatedUser.id,
-      name: updatedUser.name,
-      email: updatedUser.email,
-      role: updatedUser.role,
-      phone: updatedUser.phone ?? '',
-      avatar: updatedUser.avatar ?? '',
-      bio: updatedUser.bio ?? '',
-      createdAt: updatedUser.createdAt,
-      gender: updatedUser.gender ?? undefined
-    };
+  if (updateAuthDto.password) {
+    updatedData.password = await this.hashPassword(updateAuthDto.password);
   }
+
+  if (file) {
+    const result = await this.cloudinaryService.uploadFile(file, 'usersAvatars');
+    if (result) {
+      updatedData.avatar = result.url;
+    }
+  }
+
+  const updatedUser = await this.prisma.user.update({
+    where: { id },
+    data: updatedData,
+  });
+
+  return {
+    id: updatedUser.id,
+    name: updatedUser.name,
+    email: updatedUser.email,
+    role: updatedUser.role,
+    phone: updatedUser.phone ?? '',
+    avatar: updatedUser.avatar ?? '',
+    bio: updatedUser.bio ?? '',
+    createdAt: updatedUser.createdAt,
+    gender: updatedUser.gender ?? '',
+  };
+}
+
 
   /**
    * 

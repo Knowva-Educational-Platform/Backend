@@ -44,7 +44,7 @@ interface IUser {
   avatar?: string
   bio?: string
   createdAt?: Date
-  gender?: Gender
+  gender?: string
 }
 
 
