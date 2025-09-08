@@ -45,12 +45,20 @@ export class AuthService {
 
     let role: Role;
     let userData;
+    let gender;
     if (createAuthDto.roleToken === this.configService.get<string>('TEACHER_TOKEN')) {
       role = Role.TEACHER;
     } else {
 
       role = Role.STUDENT;
     }
+    if(!createAuthDto.gender){
+      gender = undefined
+      
+    }else{
+      gender = createAuthDto.gender === 'male' ? 'MALE' : 'FEMALE'
+    }
+
     if (!file) {
       userData = {
         data: {
@@ -60,7 +68,7 @@ export class AuthService {
           name: createAuthDto.name,
           phone: createAuthDto.phoneNumber,
           bio: createAuthDto.bio,
-          gender: createAuthDto.gender === 'male' ? 'MALE' : 'FEMALE'
+          gender: gender
         }
       };
     } else {
@@ -74,7 +82,7 @@ export class AuthService {
           phone: createAuthDto.phoneNumber,
           avatar: result.secure_url,
           bio: createAuthDto.bio,
-          gender: createAuthDto.gender === 'male' ? 'MALE' : 'FEMALE',
+          gender: gender,
           publicId: result.public_id,
 
         }
