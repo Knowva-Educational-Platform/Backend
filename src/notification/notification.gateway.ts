@@ -8,7 +8,7 @@ import { WsJwtGuard } from 'src/guards/ws.guard';
 import { JwtService } from '@nestjs/jwt';
 
 
-@WebSocketGateway(3003, {
+@WebSocketGateway( {
   cors: {
     origin: '*',
   },

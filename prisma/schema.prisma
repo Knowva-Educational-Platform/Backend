@@ -196,7 +196,7 @@ enum LessonType {
 model Quiz {
   id              Int      @id @default(autoincrement())
   title           String
-  status          String   @default("DRAFT")
+  status          QuizStatus @default(DRAFT)
   subject         Subject  @relation(fields: [subjectId], references: [id])
   subjectId       Int
   group           Group    @relation(fields: [groupId], references: [id])
@@ -208,11 +208,16 @@ model Quiz {
   isActive        Boolean  @default(false)
   canChangeAnswer Boolean  @default(true)
 
-  questions Question[]
+  questions QuizQuestion[]
 
   attempts QuizAttempt[]
 
   @@index([id, createdById])
+}
+
+enum QuizStatus {
+  DRAFT
+  PUBLIC
 }
 
 model Question {
@@ -221,15 +226,25 @@ model Question {
   type        QuestionType
   options     String[]
   answer      String
-  quiz        Quiz            @relation(fields: [quizId], references: [id])
-  quizId      Int
   createdBy   User?           @relation(fields: [createdById], references: [id])
   createdById Int?
   mode        QuestionMode
   score       Float
   answers     StudentAnswer[]
 
+  quizzes     QuizQuestion[]
+
   @@index([id, createdById])
+}
+
+model QuizQuestion {
+  id         Int      @id @default(autoincrement())
+  quiz       Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  quizId     Int
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  questionId Int
+
+  @@unique([quizId, questionId])
 }
 
 enum QuestionType {

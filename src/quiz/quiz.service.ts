@@ -20,55 +20,89 @@ export class QuizService {
     }
 
     async getQuiz(id: number, userId: number) {
-        return this.prisma.quiz.findUnique({
+        let quiz = await (this.prisma as any).quiz.findUnique({
             where: { id, createdById: userId },
-            include: { questions: true }
+            include: { questions: { include: { question: true } } } as any
         });
+        if (!quiz) throw new BadRequestException('Quiz not found');
+        return quiz;
     }
 
     async createQuiz(userId: number, createQuizDto: CreateQuizDto) {
         if (new Date(createQuizDto.endsAt) <= new Date(createQuizDto.startsAt)) {
             throw new BadRequestException('endsAt must be after startsAt');
         }
-        const quiz = await this.prisma.quiz.create({ data: { ...createQuizDto, createdById: userId } });
-        const members = await this.prisma.membership.findMany({ where: { groupId: quiz.groupId, status: 'APPROVED' }, select: { studentId: true } });
-        for (const m of members) {
-            await this.notifications.create(m.studentId, `New quiz: ${quiz.title} starts at ${quiz.startsAt.toISOString()}`, NotificationType.QUIZ_ASSIGNED);
-            this.notificationGateway.sendNotification(m.studentId.toString(), `New quiz: ${quiz.title} starts at ${quiz.startsAt.toISOString()}`);
-        }
+        let subject = await this.prisma.subject.findUnique({ where: { id: createQuizDto.subjectId } });
+        if (!subject) throw new BadRequestException('Subject not found');
+        let group = await this.prisma.group.findUnique({ where: { id: createQuizDto.groupId } });
+        if (!group) throw new BadRequestException('Group not found');
+        const isActive = new Date(createQuizDto.startsAt) <= new Date();
+        const quiz = await this.prisma.quiz.create({ data: { ...createQuizDto, createdById: userId, isActive, status: 'DRAFT' as any } });
+        // Do NOT notify students on draft creation
         return quiz;
     }
 
     async updateQuiz(id: number, userId: number, updateQuizDto: UpdateQuizDto) {
-        const quiz = await this.prisma.quiz.update({ where: { id, createdById: userId }, data: updateQuizDto });
+        // validate quiz ownership
+        const existing = await this.prisma.quiz.findUnique({ where: { id, createdById: userId } });
+        if (!existing) throw new BadRequestException('Quiz not found');
+        // recalc isActive if startsAt updated
+        let data: any = { ...updateQuizDto };
+        if (updateQuizDto.startsAt) {
+            data.isActive = new Date(updateQuizDto.startsAt) <= new Date();
+        }
+        const quiz = await this.prisma.quiz.update({ where: { id }, data });
         return quiz;
     }
 
+    async updateQuizStatus(id: number, userId: number, status: 'DRAFT' | 'PUBLIC') {
+        const quiz = await this.prisma.quiz.findUnique({ where: { id, createdById: userId } });
+        if (!quiz) throw new BadRequestException('Quiz not found');
+        const updated = await this.prisma.quiz.update({ where: { id }, data: { status: status as any } });
+        // If publishing now, notify approved group members
+        if (quiz.status !== 'PUBLIC' && status === 'PUBLIC') {
+            const members = await this.prisma.membership.findMany({ where: { groupId: updated.groupId, status: 'APPROVED' }, select: { studentId: true } });
+            for (const m of members) {
+                await this.notifications.create(m.studentId, `New quiz: ${updated.title} starts at ${updated.startsAt.toISOString()}`, NotificationType.QUIZ_ASSIGNED);
+                this.notificationGateway.sendNotification(m.studentId.toString(), `New quiz: ${updated.title} starts at ${updated.startsAt.toISOString()}`);
+            }
+        }
+        return updated;
+    }
+
+    async getDraftQuizzes(userId: number) {
+        return this.prisma.quiz.findMany({ where: { createdById: userId, status: 'DRAFT' as any } });
+    }
+
+    async getPublicQuizzes(userId: number) {
+        return this.prisma.quiz.findMany({ where: { createdById: userId, status: 'PUBLIC' as any } });
+    }
+
     async duplicateQuiz(id: number, userId: number) {
-        const quiz = await this.prisma.quiz.findUnique({
+        const quiz = await (this.prisma as any).quiz.findUnique({
             where: {
                 id,
                 createdById: userId
             },
-            include: {
-                questions: {
-                    select: { id: true }
-                }
-            }
+            include: { questions: { select: { questionId: true } } as any }
         });
 
         if (!quiz) {
             throw new InternalServerErrorException('Quiz not found');
         }
 
-        const newQuiz = await this.prisma.quiz.create({
+        const newQuiz = await (this.prisma as any).quiz.create({
             data: {
-                ...quiz,
                 title: `${quiz.title} Copy`,
+                status: quiz.status as any,
+                subjectId: quiz.subjectId,
+                groupId: quiz.groupId,
                 createdById: userId,
-                questions: {
-                    connect: quiz.questions.map((question) => ({ id: question.id }))
-                }
+                startsAt: quiz.startsAt,
+                endsAt: quiz.endsAt,
+                isActive: quiz.isActive,
+                canChangeAnswer: quiz.canChangeAnswer,
+                questions: { create: (quiz.questions || []).map((qq: any) => ({ questionId: qq.questionId })) as any }
             }
         });
         return newQuiz;
@@ -83,18 +117,13 @@ export class QuizService {
     }
 
     async addOldQuestionToQuiz(userId: number, quizId: number, questionId: number) {
-        const question = await this.prisma.question.findUnique({
-            where: {
-                id: questionId,
-                createdById: userId
-            }
-        });
-
-        if (!question) {
-            throw new InternalServerErrorException('Question not found');
-        }
-
-        return await this.prisma.question.create({ data: { ...question, createdById: userId, quizId } });
+        const quiz = await this.prisma.quiz.findUnique({ where: { id: quizId, createdById: userId } });
+        if (!quiz) throw new BadRequestException('Quiz not found');
+        const question = await this.prisma.question.findUnique({ where: { id: questionId, createdById: userId } });
+        if (!question) throw new BadRequestException('Question not found');
+        const existing = await (this.prisma as any).quizQuestion.findFirst({ where: { quizId, questionId } });
+        if (existing) return existing as any;
+        return await (this.prisma as any).quizQuestion.create({ data: { quizId, questionId } });
     }
 
     private validateQuestionOptions(question: any) {
@@ -110,14 +139,17 @@ export class QuizService {
     }
 
     async addManualQuestionToQuiz(userId: number, quizId: number, questionDto: CreateQuestionDto) {
+        const quiz = await this.prisma.quiz.findUnique({ where: { id: quizId, createdById: userId } });
+        if (!quiz) throw new BadRequestException('Quiz not found');
         this.validateQuestionOptions(questionDto);
-
-        return this.prisma.question.create({
-            data: { ...questionDto, createdById: userId, quizId, mode: QuestionMode.MANUAL }
-        });
+        const created = await (this.prisma as any).question.create({ data: { ...questionDto, createdById: userId, mode: QuestionMode.MANUAL } as any });
+        await (this.prisma as any).quizQuestion.create({ data: { quizId, questionId: created.id } });
+        return created;
     }
 
     async addAiQuestionsToQuiz(userId: number, quizId: number, noOfQuestions: number) {
+        const quiz = await this.prisma.quiz.findUnique({ where: { id: quizId, createdById: userId } });
+        if (!quiz) throw new BadRequestException('Quiz not found');
         // TODO: fetch questions from proccess.env.KNOWVA_AI_API using axios asking for <noOfQuestions> Ai generated questions
         // and the response should be { questions: CreateQuestionDto[] }
         // validate each dto and its options then add them to the database
@@ -130,7 +162,8 @@ export class QuizService {
             }
 
             this.validateQuestionOptions(questionDto);
-            await this.prisma.question.create({ data: { ...questionDto, createdById: userId, quizId, mode: QuestionMode.AI } });
+            const created = await (this.prisma as any).question.create({ data: { ...questionDto, createdById: userId, mode: QuestionMode.AI } as any });
+            await (this.prisma as any).quizQuestion.create({ data: { quizId, questionId: created.id } });
         }
         return { count: questionDtos.length };
     }
@@ -140,7 +173,8 @@ export class QuizService {
         if (!quiz) throw new BadRequestException('Quiz not found');
         for (const q of questions) {
             this.validateQuestionOptions(q);
-            await this.prisma.question.create({ data: { ...q, createdById: userId, quizId, mode: QuestionMode.AI } });
+            const created = await (this.prisma as any).question.create({ data: { ...q, createdById: userId, mode: QuestionMode.AI } as any });
+            await (this.prisma as any).quizQuestion.create({ data: { quizId, questionId: created.id } });
         }
         return { count: questions.length };
     }
@@ -167,15 +201,23 @@ export class QuizService {
         return this.prisma.question.update({ where: { id: questionId, createdById: userId }, data: questionDto });
     }
 
-    async removeQuestionFromQuiz(userId: number, questionId: number) {
-        return this.prisma.question.update({
-            where: { id: questionId, createdById: userId },
-            data: { quizId: undefined }
-        });
+    async removeQuestionFromQuiz(userId: number, questionId: number ,quizId: number) {
+        const quiz = await this.prisma.quiz.findUnique({ where: { id: quizId, createdById: userId } });
+        if (!quiz) throw new BadRequestException('Quiz not found');
+        const question = await this.prisma.question.findUnique({ where: { id: questionId, createdById: userId } });
+        if (!question) throw new BadRequestException('Question not found');
+        const link = await (this.prisma as any).quizQuestion.findFirst({ where: { quizId, questionId } });
+        if (!link) throw new BadRequestException('Question is not linked to this quiz');
+        await (this.prisma as any).quizQuestion.delete({ where: { id: link.id } });
+        return { message: 'Question removed successfully' };
     }
 
     async deleteQuestion(userId: number, questionId: number) {
-        return this.prisma.question.delete({ where: { id: questionId, createdById: userId, quizId: undefined } });
+        const question = await this.prisma.question.findUnique({ where: { id: questionId, createdById: userId } });
+        if (!question) throw new BadRequestException('Question not found');
+        const links = await (this.prisma as any).quizQuestion.count({ where: { questionId } });
+        if (links > 0) throw new BadRequestException('Question is linked to quizzes; remove links first');
+        return (this.prisma as any).question.delete({ where: { id: questionId, createdById: userId } });
     }
 
     async getMyQuizAttempts(userId: number, quizId: number) {
@@ -183,12 +225,17 @@ export class QuizService {
     }
 
     async getQuizAttempts(quizId: number, userId: number) {
+        let quiz = await this.prisma.quiz.findUnique({ where: { id: quizId, createdById: userId } });
+        if (!quiz) throw new BadRequestException('Quiz not found');
         return await this.prisma.quiz.findMany({ where: { id: quizId, createdById: userId }, select: { attempts: true } });
     }
 
     async startQuizAttempt(userId: number, quizId: number) {
         const quiz = await this.prisma.quiz.findUnique({ where: { id: quizId } });
         if (!quiz) throw new BadRequestException('Quiz not found');
+        if (quiz.status !== 'PUBLIC') {
+            throw new BadRequestException('Quiz is not published');
+        }
         if (quiz.startsAt > new Date() || quiz.endsAt <= new Date()) {
             throw new BadRequestException('Quiz is not available');
         }

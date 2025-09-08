@@ -10,7 +10,8 @@ import {
     Request,
     ParseIntPipe,
     HttpCode,
-    HttpStatus
+    HttpStatus,
+    Query
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiBody } from '@nestjs/swagger';
 import { QuizService } from './quiz.service';
@@ -99,6 +100,26 @@ export class QuizController {
         return this.quizService.updateQuiz(id, req.user.id, updateQuizDto);
     }
 
+    @Put(':id/status')
+    @Roles(Role.TEACHER)
+    @ApiOperation({ summary: 'Update quiz status (DRAFT/PUBLIC)' })
+    @ApiParam({ name: 'id', description: 'Quiz ID' })
+    @ApiBody({ schema: { type: 'object', properties: { status: { enum: ['DRAFT', 'PUBLIC'] } }, required: ['status'] } })
+    /**
+     * Updates the status of a quiz for the authenticated teacher
+     *
+     * @param id The ID of the quiz to update
+     * @param body The updated status of the quiz (DRAFT/PUBLIC)
+     * @returns The updated quiz object
+     */
+    async updateQuizStatus(
+        @Param('id', ParseIntPipe) id: number,
+        @Body() body: { status: 'DRAFT' | 'PUBLIC' },
+        @Request() req
+    ) {
+        return this.quizService.updateQuizStatus(id, req.user.id, body.status);
+    }
+
     @Post(':id/duplicate')
     @Roles(Role.TEACHER)
     @ApiOperation({ summary: 'Duplicate a quiz' })
@@ -117,8 +138,34 @@ export class QuizController {
         return this.quizService.duplicateQuiz(id, req.user.id);
     }
 
+    @Get('list/drafts')
+    @Roles(Role.TEACHER)
+    @ApiOperation({ summary: 'Get draft quizzes' })
+
+    /**
+     * Retrieves all draft quizzes for the authenticated teacher
+     *
+     * @returns A list of draft quiz objects
+     */
+    async getDrafts(@Request() req) {
+        return this.quizService.getDraftQuizzes(req.user.id);
+    }
+
+    @Get('list/public')
+    @Roles(Role.TEACHER)
+   @ApiOperation({ summary: 'Get public quizzes' })
+
+    /**
+     * Retrieves all public quizzes for the authenticated teacher
+     *
+     * @returns A list of public quiz objects
+     */
+    async getPublic(@Request() req) {
+        return this.quizService.getPublicQuizzes(req.user.id);
+    }
+
     // Question Management Endpoints
-    @Get('questions')
+    @Get('questions/all')
     @Roles(Role.TEACHER)
     @ApiOperation({ summary: 'Get all questions for the authenticated teacher' })
     @ApiResponse({ status: 200, description: 'List of questions retrieved successfully' })
@@ -131,7 +178,7 @@ export class QuizController {
         return this.quizService.getQuestions(req.user.id);
     }
 
-    @Get('questions/:id')
+    @Get('question/:id')
     @Roles(Role.TEACHER)
     @ApiOperation({ summary: 'Get a specific question by ID' })
     @ApiParam({ name: 'id', description: 'Question ID' })
@@ -264,7 +311,7 @@ export class QuizController {
         return this.quizService.updateQuestion(req.user.id, id, updateQuestionDto);
     }
 
-    @Put('questions/:id/remove-from-quiz')
+    @Delete('questions/:id/remove-from-quiz')
     @Roles(Role.TEACHER)
     @ApiOperation({ summary: 'Remove a question from its quiz' })
     @ApiParam({ name: 'id', description: 'Question ID' })
@@ -276,8 +323,8 @@ export class QuizController {
      * @param id The ID of the question to remove from its quiz
      * @returns The removed question
      */
-    async removeQuestionFromQuiz(@Param('id', ParseIntPipe) id: number, @Request() req) {
-        return this.quizService.removeQuestionFromQuiz(req.user.id, id);
+    async removeQuestionFromQuiz(@Param('id', ParseIntPipe) id: number, @Request() req ,@Query('quizId') quizId: number) {
+        return this.quizService.removeQuestionFromQuiz(req.user.id, id ,quizId);
     }
 
     @Delete('questions/:id')
@@ -349,6 +396,12 @@ export class QuizController {
     @ApiOperation({ summary: 'Finish a quiz attempt and receive results' })
     @ApiParam({ name: 'quizAttemptId', description: 'Quiz Attempt ID' })
     @ApiResponse({ status: 200, description: 'Attempt finished and scored' })
+    /**
+     * Finishes a quiz attempt and receives the results for the authenticated student
+     *
+     * @param quizAttemptId The ID of the quiz attempt to finish
+     * @returns The finished quiz attempt and its results
+     */
     async finishAttempt(
         @Param('quizAttemptId', ParseIntPipe) quizAttemptId: number,
         @Request() req
